@@ -170,19 +170,21 @@ export default function App() {
         const badge = contact.unread || (contact.phase === "incomingPending" ? 1 : 0);
         return { contact, last: summary, badge, listed: !!summary || contact.phase !== "ready" };
       })
-      .filter((chat) => chat.listed || chat.contact.nearby)
+      // Someone just opened from contacts stays in the list until invited.
+      .filter((chat) => chat.listed || chat.contact.nearby || chat.contact.id === selected)
       .sort((a, b) => (b.last?.timestamp ?? 0) - (a.last?.timestamp ?? 0));
-  }, [snapshot]);
+  }, [snapshot, selected]);
 
   const listed = useMemo(() => {
     const text = query.trim().toLocaleLowerCase("ru");
     return chats.filter((chat) => {
-      if (filter === "nearby" ? !chat.contact.nearby : !chat.listed) return false;
+      const shown = chat.listed || chat.contact.id === selected;
+      if (filter === "nearby" ? !chat.contact.nearby : !shown) return false;
       if (filter === "invitations" && chat.contact.phase !== "incomingPending") return false;
       if (filter === "unread" && chat.badge === 0) return false;
       return !text || chat.contact.card.name.toLocaleLowerCase("ru").includes(text);
     });
-  }, [chats, filter, query]);
+  }, [chats, filter, query, selected]);
 
   const chat = chats.find((c) => c.contact.id === selected) ?? null;
   const unreadChats = chats.filter((c) => c.badge > 0).length;
@@ -303,7 +305,7 @@ export default function App() {
                     <span className="row-bottom">
                       <span className="preview">
                         {last?.outgoing && <IconTicks read={last.read} />}
-                        {last ? last.text : distanceLabel(contact)}
+                        {last ? last.text : contact.nearby ? distanceLabel(contact) : "Пригласите в чат, чтобы писать"}
                       </span>
                       {badge > 0 && <span className="count">{badge}</span>}
                     </span>

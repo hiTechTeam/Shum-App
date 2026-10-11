@@ -144,41 +144,41 @@ export function ContactCard(props: {
   );
 }
 
-/** Adds a person by their link, or invites a known contact by Shum ID. */
+/**
+ * Adds a person by their invitation link, or finds them by network ID and
+ * invites them. Over the internet a person is found only by network ID:
+ * relays deliver to it, while a Shum ID is a fingerprint of the keys.
+ */
 export function AddContact(props: { act: (request: Request) => Promise<void>; onClose: () => void }) {
-  const [link, setLink] = useState("");
-  const [id, setID] = useState("");
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const text = value.trim();
+  const link = /^shum:\/\//i.test(text) || text.includes("/");
+  const known = !link && text.length >= 8 && text.length < 64;
   return (
     <Modal title="Добавить контакт" onClose={props.onClose}>
-      <label className="field-label">Ссылка или код приглашения</label>
+      <label className="field-label">Ссылка или сетевой ID</label>
       <div className="field-row">
-        <input className="field" placeholder="shum://…" value={link} onChange={(e) => setLink(e.target.value)} />
+        <input className="field" autoFocus placeholder="shum://… или 64 символа" value={value} onChange={(e) => setValue(e.target.value)} />
         <button
           className="button primary"
-          disabled={!link.trim()}
+          disabled={!text || busy}
           onClick={async () => {
-            await props.act({ command: "add", link: link.trim() });
+            setBusy(true);
+            // A link only adds the card; a network ID finds the person and invites them.
+            await props.act(link ? { command: "add", link: text } : { command: "invite", contact: text });
+            setBusy(false);
             props.onClose();
           }}
         >
-          Добавить
+          {busy ? "Ищу…" : "Добавить"}
         </button>
       </div>
-      <label className="field-label">Пригласить по Shum ID</label>
-      <div className="field-row">
-        <input className="field" placeholder="Полный Shum ID или первые 8 символов" value={id} onChange={(e) => setID(e.target.value)} />
-        <button
-          className="button"
-          disabled={id.trim().length < 8}
-          onClick={async () => {
-            await props.act({ command: "invite", contact: id.trim() });
-            props.onClose();
-          }}
-        >
-          Пригласить
-        </button>
-      </div>
-      <p className="muted small">Человек должен быть в сети: если он не ответит за 20 секунд, добавьте его по ссылке.</p>
+      <p className="muted small">
+        {known
+          ? "Короткий ID подходит только для тех, кто уже есть в контактах или рядом."
+          : "Сетевой ID есть у собеседника в разделе «Профиль → Мой профиль». Shum ID для поиска не подходит. Человек должен быть в сети: если он не ответит за 20 секунд, попросите ссылку или QR-код."}
+      </p>
     </Modal>
   );
 }
