@@ -158,10 +158,14 @@ export async function selectProfile(id: string) {
 export async function openProfile(id: string): Promise<WebProfile> {
   await ready();
   const d = await db();
+  // Both reads are queued before waiting: Safari may end a transaction
+  // while a promise between its requests resolves.
   const tx = d.transaction(["profiles", "records"]);
-  const entry: Entry | undefined = await result(tx.objectStore("profiles").get(id));
+  const [entry, records] = await Promise.all([
+    result<Entry | undefined>(tx.objectStore("profiles").get(id)),
+    result<StoredRecord[]>(tx.objectStore("records").index("profile").getAll(id)),
+  ]);
   if (!entry) throw new Error("Профиль не найден");
-  const records: StoredRecord[] = await result(tx.objectStore("records").index("profile").getAll(id));
   const bundle = new Uint8Array(await crypto.subtle.decrypt(sealParams(entry.iv, id), entry.key, entry.sealed));
   const stored = records.map(({ bucket, id: index, position, payload }) => ({ bucket, id: index, position, payload }));
   let profile: WebProfile;
@@ -202,8 +206,13 @@ export async function renameProfile(id: string, name: string) {
   const d = await db();
   const tx = d.transaction("profiles", "readwrite");
   const profiles = tx.objectStore("profiles");
-  const entry: Entry | undefined = await result(profiles.get(id));
-  if (entry) profiles.put({ ...entry, name });
+  // The write follows the read inside its event, so the transaction stays
+  // active in every browser.
+  const read = profiles.get(id);
+  read.onsuccess = () => {
+    const entry: Entry | undefined = read.result;
+    if (entry) profiles.put({ ...entry, name });
+  };
   await finished(tx);
 }
 
@@ -212,9 +221,15 @@ export async function deleteProfile(id: string) {
   const d = await db();
   const tx = d.transaction(["profiles", "records", "meta"], "readwrite");
   tx.objectStore("profiles").delete(id);
-  const keys = await result(tx.objectStore("records").index("profile").getAllKeys(id));
-  for (const key of keys) tx.objectStore("records").delete(key);
-  const meta = await result(tx.objectStore("meta").get("selected"));
-  if ((meta as { value?: string } | undefined)?.value === id) tx.objectStore("meta").delete("selected");
+  // Deletes follow their reads inside the read events, so the transaction
+  // stays active in every browser.
+  const keys = tx.objectStore("records").index("profile").getAllKeys(id);
+  keys.onsuccess = () => {
+    for (const key of keys.result) tx.objectStore("records").delete(key);
+  };
+  const meta = tx.objectStore("meta").get("selected");
+  meta.onsuccess = () => {
+    if ((meta.result as { value?: string } | undefined)?.value === id) tx.objectStore("meta").delete("selected");
+  };
   await finished(tx);
 }
