@@ -21,6 +21,11 @@ fn main() {
             commands::switch_profile,
             commands::own_invitation,
             commands::save_backup,
+            commands::create_profile,
+            commands::backup_summary,
+            commands::restore_backup,
+            commands::delete_profile,
+            commands::profile_preview,
         ])
         .build(tauri::generate_context!())
         .expect("Shum failed to start")

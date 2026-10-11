@@ -201,3 +201,111 @@ mod tests {
         assert_eq!(super::rfc3339(1_791_670_000), "2026-10-10T22:06:40Z");
     }
 }
+
+fn blocking_failure(error: tokio::task::JoinError) -> Failure {
+    failure(error)
+}
+
+/// Creates a new profile with the same checks as the CLI and makes it current.
+/// Keys go to the system key store, like every new profile.
+#[tauri::command]
+pub async fn create_profile(
+    link: tauri::State<'_, Link>,
+    name: String,
+    seed: String,
+) -> Result<(), Failure> {
+    use shum_session::registration;
+    let seed: u64 = seed.parse().map_err(failure)?;
+    let name = name.trim().to_string();
+    registration::validate_name(&name).map_err(Failure::from_error)?;
+    link.shutdown().await;
+    let root = link.root().to_path_buf();
+    tokio::task::spawn_blocking(move || {
+        let keys = registration::prepare(&root, |_| {})?;
+        registration::create(
+            &root,
+            &name,
+            Some(seed),
+            shum_store::vault::KeyMode::Auto,
+            &registration::Settings::default(),
+            keys,
+        )
+        .map(|_| ())
+    })
+    .await
+    .map_err(blocking_failure)?
+    .map_err(Failure::from_error)
+}
+
+/// Name and date of a backup file, shown before the password is asked.
+#[tauri::command]
+pub fn backup_summary(file: String) -> Result<Value, Failure> {
+    let bytes = STANDARD.decode(file).map_err(failure)?;
+    let summary = shum_store::backup::summary(&bytes)
+        .map_err(|_| failure("Это не файл резервной копии Shum"))?;
+    Ok(json!({ "profileName": summary.profile_name, "createdAt": summary.created_at }))
+}
+
+/// Restores a backup as a new profile on this computer and makes it current.
+/// A profile with the same Shum ID is replaced only with `replace`.
+#[tauri::command]
+pub async fn restore_backup(
+    link: tauri::State<'_, Link>,
+    file: String,
+    password: String,
+    replace: bool,
+) -> Result<(), Failure> {
+    let bytes = STANDARD.decode(file).map_err(failure)?;
+    link.shutdown().await;
+    let profiles = link.profiles()?;
+    tokio::task::spawn_blocking(move || {
+        let restored = shum_store::backup::restore(
+            &profiles,
+            &bytes,
+            &password,
+            shum_store::vault::KeyMode::Auto,
+            replace,
+        )
+        .map_err(|error| match error {
+            shum_store::Error::Authentication => failure("Неверный пароль или файл повреждён"),
+            shum_store::Error::ProfileExists => failure("Этот профиль уже есть на компьютере"),
+            other => failure(other),
+        })?;
+        profiles.select(&restored.id).map_err(failure)
+    })
+    .await
+    .map_err(blocking_failure)?
+}
+
+/// Deletes a local profile after the person typed its name. Keys, contacts
+/// and messages are removed from this computer; another profile opens.
+#[tauri::command]
+pub async fn delete_profile(
+    link: tauri::State<'_, Link>,
+    id: String,
+    confirm: String,
+) -> Result<(), Failure> {
+    let profiles = link.profiles()?;
+    let (_, list) = profiles.list().map_err(failure)?;
+    let profile = list
+        .into_iter()
+        .find(|p| p.id == id)
+        .ok_or_else(|| failure("Профиль не найден"))?;
+    if confirm.trim() != profile.name {
+        return Err(failure("Имя не совпало, удаление отменено"));
+    }
+    link.close(&id).await?;
+    tokio::task::spawn_blocking(move || profiles.delete(&id).map_err(failure))
+        .await
+        .map_err(blocking_failure)?
+}
+
+/// Name and avatar of any local profile, without opening it in the app.
+#[tauri::command]
+pub async fn profile_preview(link: tauri::State<'_, Link>, id: String) -> Result<Value, Failure> {
+    let mut preview = shum_session::service::preview(link.root(), &id)
+        .await
+        .unwrap_or(Value::Null);
+    quote_seeds(&mut preview);
+    Ok(preview)
+}

@@ -17,6 +17,6 @@ base64 = "0.22"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 directories = "6"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
-shum-core = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "584bc65f3f946582fb17ef97259f33f59f25af16" }
-shum-store = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "584bc65f3f946582fb17ef97259f33f59f25af16" }
-shum-session = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "584bc65f3f946582fb17ef97259f33f59f25af16" }
+shum-core = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "f71e5d61216d5725880e3bc265d4501aa10885d7" }
+shum-store = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "f71e5d61216d5725880e3bc265d4501aa10885d7" }
+shum-session = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "f71e5d61216d5725880e3bc265d4501aa10885d7" }

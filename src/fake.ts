@@ -78,7 +78,11 @@ const event = (contactID: string, kind: string): TimelineEvent => ({
   kind,
 });
 
+// Open the preview with #welcome to see the app without any profile.
+const fresh = () => typeof location !== "undefined" && location.hash === "#welcome";
+
 export async function fakeCall<T>(request: Request): Promise<T> {
+  if (fresh()) throw { kind: "text", text: "Профиля пока нет." };
   switch (request.command) {
     case "send":
       state.messages.push(message(request.contact, true, request.text, Date.now(), "delivered"));
@@ -144,7 +148,10 @@ export async function fakeCall<T>(request: Request): Promise<T> {
 export async function fakeShell<T>(command: string, _args: Record<string, unknown>): Promise<T> {
   switch (command) {
     case "profiles":
+      if (fresh()) return { selected: null, profiles: [] } as T;
       return { selected: "test", profiles: [{ id: "test", name: state.card.name, ownerId: me }] } as T;
+    case "new_avatar_seed":
+      return String(Math.floor(Math.random() * 1e9)) as T;
     case "own_invitation":
       return { link: "shum://c4/preview", qr: "" } as T;
     default:

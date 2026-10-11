@@ -208,3 +208,48 @@ input { font: inherit; color: inherit; }
 .rail-avatar { display: grid; place-items: center; border-radius: 50%; }
 .rail-avatar .avatar { box-shadow: 0 0 0 2px transparent; transition: box-shadow 0.15s; }
 .rail-item.active .rail-avatar .avatar { box-shadow: 0 0 0 2px var(--accent); }
+
+/* First run */
+.welcome { position: relative; flex: 1; display: grid; place-items: center; padding: 32px; overflow: auto;
+  background:
+    radial-gradient(circle at 100% 0, #30d15814 0, transparent 45%),
+    radial-gradient(circle at 0 100%, #30d1580f 0, transparent 40%),
+    var(--canvas); }
+.welcome-cancel { position: absolute; top: 20px; right: 24px; }
+.entry { width: 100%; max-width: 980px; display: flex; align-items: center; justify-content: space-between; gap: 48px; }
+.entry-text { max-width: 420px; display: flex; flex-direction: column; gap: 20px; }
+.entry-text p { margin: 0; font-size: 17px; line-height: 1.5; color: var(--bubble-in-time); }
+.pixel-title { width: 220px; fill: var(--text); }
+.entry-card { width: 360px; display: flex; flex-direction: column; gap: 12px; padding: 24px; border-radius: 20px; background: #161618; border: 1px solid var(--line); }
+.entry-card h2 { margin: 0 0 4px; font-size: 18px; display: flex; gap: 8px; align-items: center; }
+.entry-card p { margin: 0; color: var(--bubble-in-time); line-height: 1.45; }
+.entry-card .button { flex: none; margin-top: 8px; }
+.entry-card .link-button { align-self: flex-start; }
+.step { width: 100%; max-width: 360px; display: flex; flex-direction: column; align-items: stretch; gap: 12px; text-align: center; }
+.step h1 { margin: 4px 0 0; font-size: 26px; }
+.step .field-label { text-align: left; margin-top: 12px; }
+.step .button { flex: none; }
+.step .actions { margin-top: 8px; }
+.step .link-button { align-self: center; }
+.dots { display: flex; justify-content: center; gap: 4px; }
+.dots span { width: 6px; height: 6px; border-radius: 3px; background: #3a3a3c; }
+.dots span.on { width: 18px; background: var(--accent); }
+.avatar-ring { align-self: center; padding: 3px; border-radius: 50%; border: 2px solid var(--accent); margin-top: 12px; width: 98px; height: 98px; }
+.checks { display: flex; flex-direction: column; gap: 14px; padding: 20px; border-radius: 16px; background: #161618; border: 1px solid var(--line); text-align: left; }
+.check { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.check.done { color: var(--text); }
+.check.current { color: var(--accent); font-weight: 600; }
+.check-mark { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; border: 2px dashed var(--muted); }
+.check.done .check-mark { border: 0; background: var(--accent); color: var(--on-accent); }
+.check.current .check-mark { border-color: var(--accent); }
+.progress { height: 4px; border-radius: 2px; background: #2c2c2e; overflow: hidden; }
+.progress span { display: block; height: 100%; background: var(--accent); transition: width 0.3s; }
+
+/* Restore and profile actions */
+.row-actions { display: flex; gap: 8px; }
+.file-pick { display: block; padding: 18px; border-radius: 12px; border: 1px dashed #48484a; text-align: center; cursor: pointer; color: var(--bubble-in-time); }
+.file-pick input { display: none; }
+.checkbox { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.step .actions .button { flex: 1; }
+.entry-card h2 svg { color: var(--accent); }
+.profile-row .link-button.danger { margin-left: 8px; }

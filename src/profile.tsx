@@ -1,8 +1,8 @@
 // Your own profile: name and avatar, QR code, local profiles and backup.
 import { useEffect, useState } from "react";
-import { bluetoothStatus, describe, fingerprint, inApp, shell, shortID, type LocalProfile, type Request, type Snapshot } from "./core";
+import { bluetoothStatus, describe, fingerprint, inApp, shell, shortID, type Card, type LocalProfile, type Request, type Snapshot } from "./core";
 import { IconPanel } from "./icons";
-import { Avatar, CopyRow } from "./ui";
+import { Avatar, CopyRow, Modal } from "./ui";
 
 export type Section = "me" | "qr" | "profiles" | "backup";
 
@@ -41,6 +41,8 @@ export function ProfilePage(props: {
   act: (request: Request) => Promise<void>;
   notify: (text: string) => void;
   onSwitched: () => void;
+  onCreate: () => void;
+  onRestore: () => void;
 }) {
   switch (props.section) {
     case "me":
@@ -160,9 +162,30 @@ function Qr() {
   );
 }
 
-function Profiles(props: { snapshot: Snapshot; notify: (text: string) => void; onSwitched: () => void }) {
+function Profiles(props: {
+  snapshot: Snapshot;
+  notify: (text: string) => void;
+  onSwitched: () => void;
+  onCreate: () => void;
+  onRestore: () => void;
+}) {
   const [list, setList] = useState<{ selected: string | null; profiles: LocalProfile[] } | null>(null);
-  const load = () => shell<{ selected: string | null; profiles: LocalProfile[] }>("profiles").then(setList, (e) => props.notify(describe(e)));
+  const [cards, setCards] = useState<Record<string, Card>>({});
+  const [deleting, setDeleting] = useState<LocalProfile | null>(null);
+  const load = async () => {
+    try {
+      const loaded = await shell<{ selected: string | null; profiles: LocalProfile[] }>("profiles");
+      setList(loaded);
+      // Each profile shows its own avatar, read without opening it here.
+      for (const p of loaded.profiles) {
+        shell<{ card?: Card } | null>("profile_preview", { id: p.id })
+          .then((preview) => preview?.card && setCards((all) => ({ ...all, [p.id]: preview.card! })))
+          .catch(() => {});
+      }
+    } catch (e) {
+      props.notify(describe(e));
+    }
+  };
   useEffect(() => {
     load();
   }, []); // eslint-disable-line
@@ -170,14 +193,23 @@ function Profiles(props: { snapshot: Snapshot; notify: (text: string) => void; o
     <div className="page">
       <div className="page-column">
         <h2 className="page-title">Профили</h2>
-        <p className="muted">У каждого профиля свои ключи, контакты и переписка. Новый профиль пока создаётся командой shum init.</p>
+        <p className="muted">У каждого профиля свои ключи, контакты и переписка. Открыт один профиль за раз.</p>
+        <div className="row-actions">
+          <button className="button primary small" onClick={props.onCreate}>
+            Новый профиль
+          </button>
+          <button className="button small" onClick={props.onRestore}>
+            Восстановить из копии
+          </button>
+        </div>
         {list?.profiles.map((p) => {
           const open = p.id === list.selected;
+          const card = open ? props.snapshot.card : cards[p.id] ?? { name: p.name, bio: "" };
           return (
             <div key={p.id} className={`profile-row${open ? " open" : ""}`}>
-              <Avatar card={open ? props.snapshot.card : { name: p.name, bio: "" }} id={p.ownerId} size={40} />
+              <Avatar card={card} id={p.ownerId} size={40} />
               <div className="profile-text">
-                <strong>{p.name}</strong>
+                <strong>{card.name || p.name}</strong>
                 <span className="muted small">Shum ID: {p.ownerId.slice(0, 4)}…{p.ownerId.slice(-4)}</span>
               </div>
               {open ? (
@@ -198,11 +230,66 @@ function Profiles(props: { snapshot: Snapshot; notify: (text: string) => void; o
                   Переключиться
                 </button>
               )}
+              <button className="link-button danger" onClick={() => setDeleting(p)}>
+                Удалить
+              </button>
             </div>
           );
         })}
       </div>
+      {deleting && (
+        <DeleteProfile
+          profile={deleting}
+          onClose={() => setDeleting(null)}
+          onDeleted={async () => {
+            const wasOpen = deleting.id === list?.selected;
+            setDeleting(null);
+            await load();
+            if (wasOpen) props.onSwitched();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/** Deleting a profile asks for its name, as the mockup and the CLI do. */
+function DeleteProfile(props: { profile: LocalProfile; onClose: () => void; onDeleted: () => void }) {
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const name = props.profile.name;
+  return (
+    <Modal title={`Удалить профиль «${name}»?`} onClose={props.onClose}>
+      <p className="modal-text">
+        Ключи, контакты и переписка этого профиля удалятся с компьютера безвозвратно. Если профиль понадобится, сначала сохраните резервную
+        копию.
+      </p>
+      <label className="field-label">Введите имя профиля для подтверждения</label>
+      <input className="field" autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={name} />
+      {error && <p className="danger-text small">{error}</p>}
+      <div className="actions">
+        <button className="button" onClick={props.onClose}>
+          Отмена
+        </button>
+        <button
+          className="button danger"
+          disabled={typed.trim() !== name || busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await shell("delete_profile", { id: props.profile.id, confirm: typed });
+              props.onDeleted();
+            } catch (e) {
+              setError(describe(e));
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? "Удаляю…" : "Удалить"}
+        </button>
+      </div>
+    </Modal>
   );
 }
 

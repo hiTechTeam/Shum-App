@@ -1,6 +1,6 @@
 // Building blocks shared by every screen.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { avatarPixels, reactionEmoji, reactionPixels, type Card, type ReactionKind } from "./core";
+import { avatarPixels, inApp, reactionEmoji, reactionPixels, type Card, type ReactionKind } from "./core";
 
 export function Chip(props: { active: boolean; label: string; count: number; onClick: () => void }) {
   return (
@@ -73,11 +73,12 @@ export function Avatar(props: { card: Card; id: string; size: number }) {
         width: props.size,
         height: props.size,
         fontSize: props.size * 0.42,
-        background: drawn ? undefined : `hsl(${hue(props.id)} 32% 34%)`,
+        background: drawn ? undefined : inApp ? "var(--field)" : `hsl(${hue(props.id)} 32% 34%)`,
       }}
     >
       <canvas ref={canvas} width={36} height={36} hidden={!drawn} />
-      {!drawn && props.card.name.slice(0, 1).toLocaleUpperCase("ru")}
+      {/* Letters only stand in for the browser preview, where Shum-Core does not draw. */}
+      {!drawn && !inApp && props.card.name.slice(0, 1).toLocaleUpperCase("ru")}
     </span>
   );
 }

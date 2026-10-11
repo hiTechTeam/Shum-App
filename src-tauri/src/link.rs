@@ -43,6 +43,10 @@ impl Link {
             .map(|dirs| dirs.data_local_dir().to_path_buf())
     }
 
+    pub fn root(&self) -> &std::path::Path {
+        &self.root
+    }
+
     pub fn profiles(&self) -> Result<Profiles, Failure> {
         Profiles::new(&self.root).map_err(|e| failure(&e.to_string()))
     }
@@ -62,7 +66,7 @@ impl Link {
         let usable = |id: &str| list.iter().any(|p| p.id == id && !p.deleting);
         selected
             .filter(|id| usable(id))
-            .ok_or_else(|| failure("Профиля пока нет. Создайте его командой shum init."))
+            .ok_or_else(|| failure("Профиля пока нет."))
     }
 
     /// Sends a request to the profile owner, opening the profile first when
@@ -94,7 +98,7 @@ impl Link {
             return Ok(());
         }
         if service::is_locked(&self.root, id) {
-            return Err(failure("Профиль заблокирован. Выполните shum unlock."));
+            return Err(failure("Профиль заблокирован."));
         }
         if owned.as_ref().is_some_and(|o| o.task.is_finished()) {
             owned.take();
@@ -134,6 +138,15 @@ impl Link {
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
         Err(failure("Профиль не открылся за 60 секунд"))
+    }
+
+    /// Closes profile `id` wherever it is open: the app's own session, or the
+    /// service of another process, which is asked to stop.
+    pub async fn close(&self, id: &str) -> Result<(), Failure> {
+        self.shutdown().await;
+        service::stop(&self.root, id)
+            .await
+            .map_err(Failure::from_error)
     }
 
     /// Stops the session this app serves so the database is checkpointed.

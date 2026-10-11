@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AddContact, ContactCard, ContactList } from "./contacts";
 import { ProfileNav, ProfilePage, type Section } from "./profile";
 import { Avatar, Chip, Confirm, ReactionArt } from "./ui";
+import { Welcome } from "./welcome";
 import {
   bluetoothStatus,
   call,
   describe,
+  shell,
   distanceLabel,
   eventLabels,
   reactionKinds,
@@ -100,6 +102,8 @@ export default function App() {
   const [person, setPerson] = useState<string | null>(null);
   const [section, setSection] = useState<Section>("me");
   const [adding, setAdding] = useState(false);
+  const [noProfile, setNoProfile] = useState(false);
+  const [onboarding, setOnboarding] = useState<"create" | "restore" | null>(null);
   const busy = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -108,8 +112,12 @@ export default function App() {
     try {
       setSnapshot(await call<Snapshot>({ command: "snapshot" }));
       setProblem(null);
+      setNoProfile(false);
     } catch (error) {
       setProblem(describe(error));
+      // With no profile at all the first screen offers to create one.
+      const local = await shell<{ profiles: unknown[] }>("profiles").catch(() => null);
+      setNoProfile(!!local && local.profiles.length === 0);
     } finally {
       busy.current = false;
     }
@@ -198,6 +206,26 @@ export default function App() {
     setPerson(id);
     setTab("contacts");
   };
+
+  const restart = () => {
+    setOnboarding(null);
+    setSelected(null);
+    setPerson(null);
+    setSnapshot(null);
+    setTab("chats");
+    refresh();
+  };
+  if (onboarding || (!snapshot && noProfile)) {
+    return (
+      <div className="app">
+        <Welcome
+          onDone={restart}
+          onCancel={onboarding ? () => setOnboarding(null) : undefined}
+          restore={onboarding === "restore"}
+        />
+      </div>
+    );
+  }
 
   if (!snapshot) {
     return (
@@ -306,6 +334,8 @@ export default function App() {
             snapshot={snapshot}
             act={act}
             notify={setNotice}
+            onCreate={() => setOnboarding("create")}
+            onRestore={() => setOnboarding("restore")}
             onSwitched={() => {
               setSelected(null);
               setPerson(null);

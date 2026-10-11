@@ -40,3 +40,6 @@ export const IconTicks = (props: { read?: boolean }) => (
 export const IconPlus = () => (
   <svg {...svg} strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
 );
+export const IconKey = () => (
+  <svg {...svg}><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M16 7l3 3M14 9l2 2" /></svg>
+);
