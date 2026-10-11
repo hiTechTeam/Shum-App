@@ -1,0 +1,22 @@
+[package]
+name = "shum-app"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+base64 = "0.22"
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+directories = "6"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+shum-core = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "584bc65f3f946582fb17ef97259f33f59f25af16" }
+shum-store = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "584bc65f3f946582fb17ef97259f33f59f25af16" }
+shum-session = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "584bc65f3f946582fb17ef97259f33f59f25af16" }
