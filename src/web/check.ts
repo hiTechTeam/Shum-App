@@ -1,11 +1,16 @@
 // Development check of browser storage, in a separate database: ?step=create
 // makes a profile and saves a change, ?step=reopen (after a real reload) opens
-// it again and compares. The result is in window.shumCheck.
+// it again and compares. ?step=relays connects to the default relays with a
+// throwaway inbox, shows what arrives and publishes each event back. The
+// result is in window.shumCheck.
+import init, { WebProfile, defaultRelays } from "./core/shum_web.js";
+import { RelayPool } from "./relays";
 import { createProfile, listProfiles, openProfile, save, selectedProfile, useDatabase } from "./store";
 
 declare global {
   interface Window {
     shumCheck?: { ok: boolean; details: unknown };
+    shumRelays?: RelayPool;
   }
 }
 
@@ -13,10 +18,35 @@ const log = (line: string) => {
   document.getElementById("log")!.textContent += line + "\n";
 };
 
+async function relays() {
+  await init();
+  const inbox = WebProfile.create("Проверка", undefined).inbox();
+  const received: { relay: string; id: string; republished?: string }[] = [];
+  window.shumCheck = { ok: false, details: { inbox, connected: [], received } };
+  log(`ящик ${inbox}`);
+  const pool = new RelayPool(defaultRelays(), inbox, (update) => {
+    if (update.type !== "event") {
+      log(`${update.type} ${update.relay}`);
+    } else if (!received.some((r) => r.id === update.event.id)) {
+      const entry: (typeof received)[number] = { relay: update.relay, id: update.event.id };
+      received.push(entry);
+      log(`событие ${update.event.id.slice(0, 12)}… от ${update.relay}`);
+      pool.publish(update.event).then(
+        () => ((entry.republished = "принято"), log("опубликовано обратно: принято")),
+        (error) => ((entry.republished = String(error)), log(`опубликовано обратно: ${error}`)),
+      );
+    }
+    window.shumCheck = { ok: received.length > 0, details: { inbox, connected: pool.connected(), received } };
+  });
+  window.shumRelays = pool;
+}
+
 async function run() {
   useDatabase("shum-check");
   const step = new URLSearchParams(location.search).get("step") ?? "create";
-  if (step === "create") {
+  if (step === "relays") {
+    await relays();
+  } else if (step === "create") {
     await new Promise((resolve) => {
       const r = indexedDB.deleteDatabase("shum-check");
       r.onsuccess = r.onerror = r.onblocked = resolve;
