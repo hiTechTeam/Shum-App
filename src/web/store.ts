@@ -48,9 +48,16 @@ function db(): Promise<IDBDatabase> {
       d.createObjectStore("records", { keyPath: ["profile", "bucket", "id"] }).createIndex("profile", "profile");
       d.createObjectStore("meta", { keyPath: "key" });
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const d = request.result;
+      // A newer version elsewhere must not wait on this tab forever.
+      d.onversionchange = () => d.close();
+      resolve(d);
+    };
     request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error("Shum открыт в другой вкладке. Закройте её и обновите эту страницу."));
   });
+  opened.catch(() => (opened = null));
   return opened;
 }
 

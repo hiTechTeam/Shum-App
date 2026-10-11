@@ -27,10 +27,37 @@ function forget() {
 const failure = (text: string) => ({ kind: "text", text });
 const SOON = failure("В браузерной версии это появится в следующем обновлении");
 
+/** Releases the lock of the open profile, see `hold`. */
+let release: (() => void) | null = null;
+
 function close() {
   const closing = open;
   open = null;
-  closing?.then((session) => session?.close());
+  closing?.then((session) => {
+    session?.close();
+    release?.();
+    release = null;
+  });
+}
+
+/**
+ * Takes the browser-wide lock of a profile, like the profile lock of native
+ * clients: two tabs running one profile would write over each other's
+ * records. Returns the release, or null while another tab holds it.
+ */
+function hold(id: string): Promise<(() => void) | null> {
+  if (!navigator.locks) return Promise.resolve(() => {});
+  return new Promise((resolve) => {
+    navigator.locks
+      .request(`shum-profile-${id}`, { ifAvailable: true }, (lock) => {
+        if (!lock) {
+          resolve(null);
+          return;
+        }
+        return new Promise<void>((done) => resolve(done));
+      })
+      .catch(() => resolve(null));
+  });
 }
 
 /** The selected profile's session, started once. */
@@ -41,8 +68,17 @@ function current(): Promise<BrowserSession | null> {
     if (!id) return null;
     const entry = (await listProfiles()).find((p) => p.id === id);
     if (!entry) return null;
-    const profile = await openProfile(id);
-    return new BrowserSession(id, profile, entry.name, defaultRelays());
+    const unlock = await hold(id);
+    if (!unlock) throw failure("Shum уже открыт в другой вкладке. Продолжайте там или закройте ту вкладку: эта откроется сама.");
+    try {
+      const profile = await openProfile(id);
+      const session = new BrowserSession(id, profile, entry.name, defaultRelays());
+      release = unlock;
+      return session;
+    } catch (error) {
+      unlock();
+      throw error;
+    }
   })();
   open.catch(() => (open = null));
   return open;
