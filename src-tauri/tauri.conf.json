@@ -57,6 +57,22 @@
           "y": 175
         }
       }
-    }
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "Russian",
+          "English"
+        ],
+        "displayLanguageSelector": false
+      },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      }
+    },
+    "shortDescription": "Shum messenger",
+    "longDescription": "Private messenger: chats over the internet and with people nearby over Bluetooth."
   }
 }
