@@ -29,6 +29,7 @@ fn main() {
     let root = Link::default_root().expect("no home folder for Shum data");
     tauri::Builder::default()
         .manage(Link::new(root))
+        .manage(commands::Prepared::default())
         .setup(|app| Ok(background::tray(app.handle())?))
         // Closing the window hides it; the profile keeps receiving messages.
         .on_window_event(|window, event| {
@@ -48,6 +49,8 @@ fn main() {
             commands::switch_profile,
             commands::own_invitation,
             commands::save_backup,
+            commands::prepare_keys,
+            commands::forget_keys,
             commands::create_profile,
             commands::backup_summary,
             commands::restore_backup,

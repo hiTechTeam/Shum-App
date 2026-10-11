@@ -1,6 +1,6 @@
 // Building blocks shared by every screen.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { avatarPixels, inApp, reactionEmoji, reactionPixels, type Card, type ReactionKind } from "./core";
+import { avatarPixels, reactionPixels, type Card, type ReactionKind } from "./core";
 
 export function Chip(props: { active: boolean; label: string; count: number; onClick: () => void }) {
   return (
@@ -10,14 +10,13 @@ export function Chip(props: { active: boolean; label: string; count: number; onC
   );
 }
 
-/** A reaction picture from Shum-Core; an emoji stands in outside the app. */
+/** A reaction picture from Shum-Core. */
 export function ReactionArt(props: { kind: ReactionKind; size: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [drawn, setDrawn] = useState(false);
 
   useEffect(() => {
     const pixels = reactionPixels(props.kind);
-    if (!pixels) return;
     let alive = true;
     pixels.then((data) => {
       const context = canvas.current?.getContext("2d");
@@ -31,20 +30,13 @@ export function ReactionArt(props: { kind: ReactionKind; size: number }) {
   }, [props.kind]);
 
   return (
-    <span className="reaction-art" style={{ width: props.size, height: props.size, fontSize: props.size * 0.8 }}>
+    <span className="reaction-art" style={{ width: props.size, height: props.size }}>
       <canvas ref={canvas} width={12} height={12} hidden={!drawn} />
-      {!drawn && reactionEmoji[props.kind]}
     </span>
   );
 }
 
-function hue(id: string) {
-  let value = 0;
-  for (const char of id ?? "") value = (value * 31 + char.charCodeAt(0)) % 360;
-  return value;
-}
-
-/** The pixel avatar from Shum-Core, or the first letter while there is none. */
+/** The pixel avatar from Shum-Core. */
 export function Avatar(props: { card: Card; id: string; size: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [drawn, setDrawn] = useState(false);
@@ -72,13 +64,10 @@ export function Avatar(props: { card: Card; id: string; size: number }) {
       style={{
         width: props.size,
         height: props.size,
-        fontSize: props.size * 0.42,
-        background: drawn ? undefined : inApp ? "var(--field)" : `hsl(${hue(props.id)} 32% 34%)`,
+        background: drawn ? undefined : "var(--field)",
       }}
     >
       <canvas ref={canvas} width={36} height={36} hidden={!drawn} />
-      {/* Letters only stand in for the browser preview, where Shum-Core does not draw. */}
-      {!drawn && !inApp && props.card.name.slice(0, 1).toLocaleUpperCase("ru")}
     </span>
   );
 }

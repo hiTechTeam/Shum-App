@@ -212,11 +212,54 @@ fn blocking_failure(error: tokio::task::JoinError) -> Failure {
     failure(error)
 }
 
-/// Creates a new profile with the same checks as the CLI and makes it current.
-/// Keys go to the system key store, like every new profile.
+/// Keys of the profile being created. As in every client, keys are made and
+/// checked first; the name and avatar are asked after that. Only the latest preparation keeps its keys, so the avatar shown always
+/// comes from the keys that will be used.
+#[derive(Default)]
+pub struct Prepared {
+    keys: std::sync::Mutex<Option<shum_store::vault::ProfileKeys>>,
+    latest: std::sync::atomic::AtomicU64,
+}
+
+/// Makes and checks keys for a new profile and returns the avatar seed the
+/// profile starts with, which comes from its keys.
+#[tauri::command]
+pub async fn prepare_keys(
+    link: tauri::State<'_, Link>,
+    prepared: tauri::State<'_, Prepared>,
+) -> Result<String, Failure> {
+    use std::sync::atomic::Ordering;
+    let attempt = prepared.latest.fetch_add(1, Ordering::SeqCst) + 1;
+    let root = link.root().to_path_buf();
+    let keys =
+        tokio::task::spawn_blocking(move || shum_session::registration::prepare(&root, |_| {}))
+            .await
+            .map_err(blocking_failure)?
+            .map_err(Failure::from_error)?;
+    let seed = shum_session::registration::initial_seed(&keys).to_string();
+    let mut slot = prepared.keys.lock().map_err(failure)?;
+    if prepared.latest.load(Ordering::SeqCst) != attempt {
+        return Err(failure("Ключи подготовлены повторно"));
+    }
+    *slot = Some(keys);
+    Ok(seed)
+}
+
+/// Drops prepared keys when the person leaves the new profile flow.
+#[tauri::command]
+pub fn forget_keys(prepared: tauri::State<'_, Prepared>) {
+    if let Ok(mut keys) = prepared.keys.lock() {
+        keys.take();
+    }
+}
+
+/// Creates the new profile from the prepared keys with the same checks as
+/// the CLI and makes it current. Keys go to the system key store, like
+/// every new profile.
 #[tauri::command]
 pub async fn create_profile(
     link: tauri::State<'_, Link>,
+    prepared: tauri::State<'_, Prepared>,
     name: String,
     seed: String,
 ) -> Result<(), Failure> {
@@ -224,10 +267,15 @@ pub async fn create_profile(
     let seed: u64 = seed.parse().map_err(failure)?;
     let name = name.trim().to_string();
     registration::validate_name(&name).map_err(Failure::from_error)?;
+    let keys = prepared
+        .keys
+        .lock()
+        .map_err(failure)?
+        .take()
+        .ok_or_else(|| failure("Ключи не подготовлены, начните создание профиля заново"))?;
     link.shutdown().await;
     let root = link.root().to_path_buf();
     tokio::task::spawn_blocking(move || {
-        let keys = registration::prepare(&root, |_| {})?;
         registration::create(
             &root,
             &name,
@@ -273,7 +321,10 @@ pub async fn restore_backup(
             replace,
         )
         .map_err(|error| match error {
-            shum_store::Error::Authentication => failure("Неверный пароль или файл повреждён"),
+            shum_store::Error::Authentication
+            | shum_store::Error::Core(shum_core::Error::Authentication) => {
+                failure("Неверный пароль или файл повреждён")
+            }
             shum_store::Error::ProfileExists => failure("Этот профиль уже есть на компьютере"),
             other => failure(other),
         })?;

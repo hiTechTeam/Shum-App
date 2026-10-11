@@ -3,7 +3,7 @@
 // pulses at random; when typing stops, the lit pixels freeze where they are.
 // The chat header and the chat list read one state, so they move together.
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { inApp, shell } from "./core";
+import { shell } from "./core";
 
 const STEP_MS = 180;
 const patterns = new Map<string, Promise<boolean[]>>();
@@ -11,10 +11,7 @@ const patterns = new Map<string, Promise<boolean[]>>();
 function pattern(seed: string): Promise<boolean[]> {
   let found = patterns.get(seed);
   if (!found) {
-    // The browser preview has no Shum-Core; any stable four cells will do.
-    found = inApp
-      ? shell<boolean[]>("presence_pattern", { seed })
-      : Promise.resolve([false, true, true, false, false, false, true, false, true]);
+    found = shell<boolean[]>("presence_pattern", { seed });
     patterns.set(seed, found);
   }
   return found;

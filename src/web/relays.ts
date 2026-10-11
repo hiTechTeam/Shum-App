@@ -1,9 +1,7 @@
-// Nostr relay connections in the browser, with its own WebSocket. Shum-Core
-// (shum-web) builds every message that is sent and checks every message that
-// arrives; this module only keeps the connections, like RelayPool in the
-// native core: one per relay, reconnecting with growing pauses, and a
-// publication counts once any relay confirms it.
-import { relayPublication, relayRead, relaySubscription, validateRelays } from "./core/shum_web.js";
+// Nostr relay connections in the browser. Shum-Core (WebRelays) decides what
+// to connect, send and close, and checks everything that arrives, as it does
+// in native clients; this module only keeps the WebSockets and the clock.
+import { WebRelays } from "./core/shum_web.js";
 
 export type NostrEvent = {
   id: string;
@@ -20,194 +18,111 @@ export type RelayUpdate =
   | { type: "event"; relay: string; event: NostrEvent }
   | { type: "eose"; relay: string };
 
-type Read =
-  | { type: "event"; event: NostrEvent }
-  | { type: "ok"; id: string; accepted: boolean }
-  | { type: "eose" }
-  | { type: "closed" };
-type Waiter = (accepted: boolean) => void;
-
-const CONNECT_TIMEOUT = 8_000;
-const ACK_TIMEOUT = 10_000;
-/** Publications kept per relay while it is offline, as the native queue. */
-const QUEUE = 64;
-
-class Connection {
-  private socket: WebSocket | null = null;
-  private open = false;
-  private backoff = 1;
-  private retry = 0;
-  private queue: { wire: string; id: string; waiter?: Waiter }[] = [];
-  private waiters = new Map<string, Waiter[]>();
-  private stopped = false;
-
-  constructor(
-    readonly url: string,
-    private inbox: string,
-    private update: (u: RelayUpdate) => void,
-  ) {
-    this.connect();
-  }
-
-  get connected() {
-    return this.open;
-  }
-
-  /** Sends now or when the relay is back; false when the queue is full. */
-  send(wire: string, id: string, waiter?: Waiter): boolean {
-    if (this.open && this.socket) {
-      this.transmit(wire, id, waiter);
-      return true;
-    }
-    if (this.queue.length >= QUEUE) return false;
-    this.queue.push({ wire, id, waiter });
-    return true;
-  }
-
-  /** Reconnects at once, for example when the device is back online. */
-  wake() {
-    if (this.stopped || this.socket) return;
-    clearTimeout(this.retry);
-    this.connect();
-  }
-
-  stop() {
-    this.stopped = true;
-    clearTimeout(this.retry);
-    this.socket?.close();
-    this.drop();
-  }
-
-  private connect() {
-    let socket: WebSocket;
-    try {
-      socket = new WebSocket(this.url);
-    } catch {
-      this.closed(false);
-      return;
-    }
-    this.socket = socket;
-    const timeout = setTimeout(() => socket.close(), CONNECT_TIMEOUT);
-    socket.onopen = () => {
-      clearTimeout(timeout);
-      socket.send(relaySubscription(this.inbox, Date.now() / 1000));
-      this.open = true;
-      this.backoff = 1;
-      this.update({ type: "connected", relay: this.url });
-      for (const { wire, id, waiter } of this.queue.splice(0)) this.transmit(wire, id, waiter);
-    };
-    socket.onmessage = (message) => {
-      if (typeof message.data !== "string") return;
-      const json = relayRead(message.data, this.inbox);
-      if (!json) return;
-      const read: Read = JSON.parse(json);
-      if (read.type === "event") this.update({ type: "event", relay: this.url, event: read.event });
-      else if (read.type === "eose") this.update({ type: "eose", relay: this.url });
-      else if (read.type === "ok") {
-        const waiting = this.waiters.get(read.id);
-        this.waiters.delete(read.id);
-        for (const waiter of waiting ?? []) waiter(read.accepted);
-      } else socket.close();
-    };
-    socket.onclose = () => {
-      clearTimeout(timeout);
-      if (this.socket !== socket) return;
-      this.closed(this.open);
-    };
-  }
-
-  private transmit(wire: string, id: string, waiter?: Waiter) {
-    this.socket!.send(wire);
-    if (!waiter) return;
-    const list = this.waiters.get(id) ?? [];
-    list.push(waiter);
-    this.waiters.set(id, list);
-  }
-
-  private closed(wasOpen: boolean) {
-    this.socket = null;
-    this.drop();
-    this.update({ type: "disconnected", relay: this.url });
-    if (this.stopped) return;
-    // After a working connection try again soon; after a failed attempt wait
-    // twice as long each time, up to a minute.
-    const pause = wasOpen ? 1 : this.backoff;
-    if (!wasOpen) this.backoff = Math.min(this.backoff * 2, 60);
-    this.retry = window.setTimeout(() => this.connect(), pause * 1000);
-  }
-
-  /** Publications waiting for this relay's answer count as refused. */
-  private drop() {
-    this.open = false;
-    for (const waiting of this.waiters.values()) for (const waiter of waiting) waiter(false);
-    this.waiters.clear();
-  }
-}
+type Effect =
+  | { type: "connect"; relay: number; attempt: number }
+  | { type: "send"; relay: number; text: string }
+  | { type: "close"; relay: number }
+  | { type: "connected" | "disconnected" | "eose"; url: string }
+  | { type: "event"; url: string; event: NostrEvent }
+  | { type: "published"; ticket: number; accepted: boolean };
 
 export class RelayPool {
-  private connections: Connection[];
-  private online = () => this.connections.forEach((c) => c.wake());
+  private machine: WebRelays;
+  private sockets = new Map<number, WebSocket>();
+  private waiting = new Map<number, (accepted: boolean) => void>();
+  private timer: number;
+  private closed = false;
+  private online = () => this.step((m) => m.tick(Date.now()));
 
   /** Connects to `urls` and receives gift wraps for `inbox`. */
-  constructor(urls: string[], inbox: string, update: (u: RelayUpdate) => void) {
-    validateRelays(urls);
-    this.connections = urls.map((url) => new Connection(url, inbox, update));
+  constructor(urls: string[], inbox: string, private update: (u: RelayUpdate) => void) {
+    this.machine = new WebRelays(urls, inbox, Date.now());
+    this.timer = window.setInterval(this.online, 1000);
     window.addEventListener("online", this.online);
+    this.online();
   }
 
   connected(): string[] {
-    return this.connections.filter((c) => c.connected).map((c) => c.url).sort();
+    return this.machine.connected();
   }
 
   /** Resolves once a relay accepted the event. This is never a recipient ACK. */
   publish(event: NostrEvent): Promise<void> {
-    const wire = relayPublication(JSON.stringify(event));
     return new Promise((resolve, reject) => {
-      let waiting = 0;
-      let done = false;
-      const finish = (accepted: boolean) => {
-        if (done) return;
-        if (accepted) {
-          done = true;
-          clearTimeout(timer);
-          resolve();
-        } else if (--waiting === 0) {
-          done = true;
-          clearTimeout(timer);
-          reject(new Error("Ни один релей не принял сообщение"));
-        }
-      };
-      for (const connection of this.connections) {
-        let answered = false;
-        const once = (accepted: boolean) => {
-          if (answered) return;
-          answered = true;
-          finish(accepted);
-        };
-        if (connection.send(wire, event.id, once)) waiting++;
-      }
-      if (waiting === 0) {
-        done = true;
-        reject(new Error("Очередь релеев заполнена"));
-        return;
-      }
-      const timer = window.setTimeout(() => {
-        if (done) return;
-        done = true;
-        reject(new Error("Релеи не ответили"));
-      }, ACK_TIMEOUT);
+      this.step((m) => {
+        const ticket = m.publish(JSON.stringify(event), true, Date.now())!;
+        this.waiting.set(ticket, (accepted) =>
+          accepted ? resolve() : reject(new Error("Ни один релей не принял сообщение")),
+        );
+      });
     });
   }
 
   /** Contact lookup publishes without waiting, as the native core does. */
   publishUnconfirmed(event: NostrEvent) {
-    const wire = relayPublication(JSON.stringify(event));
-    const sent = this.connections.filter((c) => c.send(wire, event.id)).length;
-    if (sent === 0) throw new Error("Очередь релеев заполнена");
+    this.step((m) => m.publish(JSON.stringify(event), false, Date.now()));
   }
 
   close() {
+    this.closed = true;
+    clearInterval(this.timer);
     window.removeEventListener("online", this.online);
-    for (const connection of this.connections) connection.stop();
+    for (const socket of this.sockets.values()) socket.close();
+    this.sockets.clear();
+    this.machine.free();
+  }
+
+  /** Feeds the machine, then carries out what it decided. */
+  private step(input: (machine: WebRelays) => void) {
+    // Sockets still report closing after the pool is gone.
+    if (this.closed) return;
+    try {
+      input(this.machine);
+    } finally {
+      const effects: Effect[] = JSON.parse(this.machine.effects());
+      for (const effect of effects) this.carry(effect);
+    }
+  }
+
+  private carry(effect: Effect) {
+    switch (effect.type) {
+      case "connect": {
+        const { relay, attempt } = effect;
+        this.sockets.get(relay)?.close();
+        let socket: WebSocket;
+        try {
+          socket = new WebSocket(this.machine.url(relay)!);
+        } catch {
+          this.step((m) => m.closed(relay, attempt, Date.now()));
+          return;
+        }
+        this.sockets.set(relay, socket);
+        socket.onopen = () => this.step((m) => m.opened(relay, attempt, Date.now()));
+        socket.onmessage = (message) => {
+          if (typeof message.data === "string") this.step((m) => m.received(relay, attempt, message.data, Date.now()));
+        };
+        socket.onclose = () => {
+          if (this.sockets.get(relay) === socket) this.sockets.delete(relay);
+          this.step((m) => m.closed(relay, attempt, Date.now()));
+        };
+        break;
+      }
+      case "send":
+        this.sockets.get(effect.relay)?.send(effect.text);
+        break;
+      case "close":
+        this.sockets.get(effect.relay)?.close();
+        this.sockets.delete(effect.relay);
+        break;
+      case "published":
+        this.waiting.get(effect.ticket)?.(effect.accepted);
+        this.waiting.delete(effect.ticket);
+        break;
+      case "event":
+        this.update({ type: "event", relay: effect.url, event: effect.event });
+        break;
+      default:
+        this.update({ type: effect.type, relay: effect.url });
+    }
   }
 }

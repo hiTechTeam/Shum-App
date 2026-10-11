@@ -8,6 +8,7 @@ import {
   bluetoothStatus,
   call,
   describe,
+  inApp,
   shell,
   distanceLabel,
   eventLabels,
@@ -281,7 +282,8 @@ export default function App() {
           </label>
           <div className="chips">
             <Chip active={filter === "all"} onClick={() => setFilter("all")} label="Все" count={chats.filter((c) => c.listed).length} />
-            <Chip active={filter === "nearby"} onClick={() => setFilter("nearby")} label="Рядом" count={nearby} />
+            {/* The browser has no Bluetooth, so nobody is ever nearby there. */}
+            {inApp && <Chip active={filter === "nearby"} onClick={() => setFilter("nearby")} label="Рядом" count={nearby} />}
             <Chip active={filter === "invitations"} onClick={() => setFilter("invitations")} label="Приглашения" count={invitations} />
             <Chip active={filter === "unread"} onClick={() => setFilter("unread")} label="Непрочитанные" count={unreadChats} />
           </div>

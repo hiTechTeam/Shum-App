@@ -1,6 +1,6 @@
 // Your own profile: name and avatar, QR code, local profiles and backup.
 import { useEffect, useState } from "react";
-import { bluetoothStatus, describe, fingerprint, inApp, shell, shortID, type Card, type LocalProfile, type Request, type Snapshot } from "./core";
+import { bluetoothStatus, describe, fingerprint, shell, shortID, type Card, type LocalProfile, type Request, type Snapshot } from "./core";
 import { IconPanel } from "./icons";
 import { Avatar, CopyRow, Modal } from "./ui";
 
@@ -63,7 +63,7 @@ function Me(props: { snapshot: Snapshot; act: (request: Request) => Promise<void
   useEffect(() => setName(snapshot.card.name), [snapshot.card.name]);
   const network = snapshot.card.nostrKey ?? "";
   const bluetooth = bluetoothStatus(snapshot);
-  const owner = snapshot.owner === "desktop" ? "приложение" : snapshot.owner === "preview" ? "предпросмотр" : "служба CLI";
+  const owner = snapshot.owner === "desktop" ? "приложение" : snapshot.owner === "browser" ? "браузер" : "служба CLI";
 
   const saveName = () => {
     const value = name.trim();
@@ -315,7 +315,7 @@ function Backup(props: { notify: (text: string) => void }) {
         {repeat && password !== repeat && <p className="danger-text small">Пароли не совпадают</p>}
         <button
           className="button primary wide"
-          disabled={!ready || !inApp}
+          disabled={!ready}
           onClick={async () => {
             setSaving(true);
             try {

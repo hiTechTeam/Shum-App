@@ -1,7 +1,7 @@
 // First run and new profiles: the entry screen, name, avatar and the
 // security check, plus restoring a profile from a backup file.
 import { useEffect, useState } from "react";
-import { describe, shell } from "./core";
+import { describe, inApp, shell } from "./core";
 import { IconKey } from "./icons";
 import { PixelField } from "./pixel-field";
 import { Avatar, Modal } from "./ui";
@@ -11,16 +11,23 @@ type Step = "entry" | "name" | "avatar" | "security";
 const securitySteps = ["Криптографические ключи", "Шифрование", "Защищённое хранилище", "Проверка"];
 
 /**
- * The whole first-run flow. With `onCancel` it is opened from Profiles and
- * starts at the name; without it this is the first screen of the app.
+ * The whole first-run flow, in the order of every Shum client: keys are made
+ * and checked first, then the name and the avatar, which starts from the
+ * keys. With `onCancel` it is opened from Profiles and starts with the keys;
+ * without it this is the first screen of the app.
  */
 export function Welcome(props: { onDone: () => void; onCancel?: () => void; restore?: boolean }) {
-  const [step, setStep] = useState<Step>(props.onCancel ? "name" : "entry");
+  const [step, setStep] = useState<Step>(props.onCancel ? "security" : "entry");
   const [name, setName] = useState("");
   const [seed, setSeed] = useState<string | null>(null);
   const [done, setDone] = useState(0);
+  const [attempt, setAttempt] = useState(0);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(!!props.restore);
+
+  // Prepared keys live only until the profile is created or the flow ends.
+  useEffect(() => () => void shell("forget_keys").catch(() => {}), []);
 
   const nextSeed = async () => {
     try {
@@ -30,29 +37,43 @@ export function Welcome(props: { onDone: () => void; onCancel?: () => void; rest
     }
   };
 
+  // Keys are made and checked in Shum-Core; the steps light up meanwhile.
   useEffect(() => {
-    if (step === "avatar" && !seed) nextSeed();
-  }, [step]); // eslint-disable-line
-
-  // Keys are prepared and checked in Shum-Core; the steps light up meanwhile.
-  useEffect(() => {
-    if (step !== "security" || !seed) return;
+    if (step !== "security") return;
+    let alive = true;
     setDone(0);
     setError(null);
     const timer = setInterval(() => setDone((n) => Math.min(n + 1, 3)), 350);
-    shell("create_profile", { name: name.trim(), seed }).then(
-      () => {
+    shell<string>("prepare_keys").then(
+      (initial) => {
         clearInterval(timer);
+        if (!alive) return;
+        setSeed(initial);
         setDone(4);
-        setTimeout(props.onDone, 500);
+        setTimeout(() => alive && setStep("name"), 500);
       },
       (e) => {
         clearInterval(timer);
-        setError(describe(e));
+        if (alive) setError(describe(e));
       },
     );
-    return () => clearInterval(timer);
-  }, [step]); // eslint-disable-line
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [step, attempt]);
+
+  const create = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await shell("create_profile", { name: name.trim(), seed });
+      props.onDone();
+    } catch (e) {
+      setError(describe(e));
+      setSaving(false);
+    }
+  };
 
   const nameOk = name.trim().length > 0 && new TextEncoder().encode(name.trim()).length <= 64;
   const dots = (active: number) => (
@@ -65,7 +86,7 @@ export function Welcome(props: { onDone: () => void; onCancel?: () => void; rest
 
   return (
     <div className="welcome">
-      {props.onCancel && step !== "security" && (
+      {props.onCancel && !saving && (
         <button className="button small welcome-cancel" onClick={props.onCancel}>
           Отмена
         </button>
@@ -84,7 +105,7 @@ export function Welcome(props: { onDone: () => void; onCancel?: () => void; rest
             </h2>
             <p>Придумайте имя и выберите аватар. Больше ничего не нужно.</p>
             <p className="muted small">Профиль хранится на этом компьютере. Ключи не покидают устройство.</p>
-            <button className="button primary" onClick={() => setStep("name")}>
+            <button className="button primary" onClick={() => setStep("security")}>
               Создать профиль
             </button>
             <button className="link-button" onClick={() => setRestoring(true)}>
@@ -96,7 +117,7 @@ export function Welcome(props: { onDone: () => void; onCancel?: () => void; rest
 
       {step === "name" && (
         <div className="step">
-          {dots(0)}
+          {dots(1)}
           <h1>Ваше имя?</h1>
           <p className="muted">Имя видят ваши контакты. Его можно поменять в профиле.</p>
           <label className="field-label">Имя</label>
@@ -116,20 +137,21 @@ export function Welcome(props: { onDone: () => void; onCancel?: () => void; rest
 
       {step === "avatar" && (
         <div className="step">
-          {dots(1)}
+          {dots(2)}
           <h1>Ваш аватар</h1>
           <p className="muted">Пиксельный, его видят все.</p>
           <div className="avatar-ring">{seed && <Avatar card={{ name, bio: "", avatarSeed: seed }} id={seed} size={88} />}</div>
           <strong>{name.trim()}</strong>
           <div className="actions">
-            <button className="button" onClick={nextSeed}>
+            <button className="button" disabled={saving} onClick={nextSeed}>
               Другой вариант
             </button>
-            <button className="button primary" disabled={!seed} onClick={() => setStep("security")}>
-              Дальше
+            <button className="button primary" disabled={!seed || saving} onClick={create}>
+              {saving ? "Сохраняю…" : "Готово"}
             </button>
           </div>
-          <button className="link-button" onClick={() => setStep("name")}>
+          {error && <p className="danger-text">{error}</p>}
+          <button className="link-button" disabled={saving} onClick={() => setStep("name")}>
             Изменить имя
           </button>
         </div>
@@ -137,9 +159,9 @@ export function Welcome(props: { onDone: () => void; onCancel?: () => void; rest
 
       {step === "security" && (
         <div className="step">
-          {dots(2)}
+          {dots(0)}
           <h1>Создаём вашу защиту</h1>
-          <p className="muted">Шифруем базу и проверяем ключи. Это займёт пару секунд.</p>
+          <p className="muted">Создаём ключи и проверяем шифрование. Это займёт пару секунд.</p>
           <div className="checks">
             {securitySteps.map((label, i) => (
               <div key={label} className={`check${i < done ? " done" : i === done ? " current" : ""}`}>
@@ -154,8 +176,8 @@ export function Welcome(props: { onDone: () => void; onCancel?: () => void; rest
           {error ? (
             <>
               <p className="danger-text">{error}</p>
-              <button className="button" onClick={() => setStep("avatar")}>
-                Назад
+              <button className="button" onClick={() => setAttempt((n) => n + 1)}>
+                Попробовать ещё раз
               </button>
             </>
           ) : (
@@ -261,20 +283,39 @@ const glyphs: Record<string, string[]> = {
   h: ["#....", "#....", "#.##.", "##..#", "#...#", "#...#", "#...#"],
   u: [".....", ".....", "#...#", "#...#", "#...#", "#..##", ".##.#"],
   m: [".....", ".....", "##.#.", "#.#.#", "#.#.#", "#.#.#", "#.#.#"],
+  W: ["#...#", "#...#", "#...#", "#.#.#", "#.#.#", "##.##", "#...#"],
+  e: [".....", ".....", ".###.", "#...#", "#####", "#....", ".###."],
+  b: ["#....", "#....", "####.", "#...#", "#...#", "#...#", "####."],
+  "-": ["...", "...", "...", "###", "...", "...", "..."],
+  " ": [".", ".", ".", ".", ".", ".", "."],
 };
 
+/** The name in the site's pixel letters; the browser version says so. */
 function PixelTitle() {
+  const text = inApp ? "Shum" : "Shum - Web";
   const cell = 8;
   const rects: JSX.Element[] = [];
-  [..."Shum"].forEach((letter, index) =>
-    glyphs[letter].forEach((row, y) =>
+  // Letters are as wide as their glyph, one empty column apart.
+  let left = 0;
+  [...text].forEach((letter, index) => {
+    const glyph = glyphs[letter];
+    glyph.forEach((row, y) =>
       [...row].forEach((dot, x) => {
-        if (dot === "#") rects.push(<rect key={`${index}-${x}-${y}`} x={(index * 6 + x) * cell} y={y * cell} width={cell} height={cell} />);
+        if (dot === "#") rects.push(<rect key={`${index}-${x}-${y}`} x={(left + x) * cell} y={y * cell} width={cell} height={cell} />);
       }),
-    ),
-  );
+    );
+    left += glyph[0].length + 1;
+  });
+  const columns = left - 1;
   return (
-    <svg className="pixel-title" shapeRendering="crispEdges" viewBox={`0 0 ${(4 * 6 - 1) * cell} ${7 * cell}`} role="img" aria-label="Shum">
+    <svg
+      className="pixel-title"
+      style={{ width: `min(100%, ${columns * 9.6}px)` }}
+      shapeRendering="crispEdges"
+      viewBox={`0 0 ${columns * cell} ${7 * cell}`}
+      role="img"
+      aria-label={text}
+    >
       {rects}
     </svg>
   );

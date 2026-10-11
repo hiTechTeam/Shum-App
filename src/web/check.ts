@@ -3,7 +3,7 @@
 // it again and compares. ?step=relays connects to the default relays with a
 // throwaway inbox, shows what arrives and publishes each event back. The
 // result is in window.shumCheck.
-import init, { WebProfile, defaultRelays } from "./core/shum_web.js";
+import init, { WebKeys, WebProfile, defaultRelays } from "./core/shum_web.js";
 import { RelayPool } from "./relays";
 import { createProfile, listProfiles, openProfile, save, selectedProfile, useDatabase } from "./store";
 
@@ -20,7 +20,7 @@ const log = (line: string) => {
 
 async function relays() {
   await init();
-  const inbox = WebProfile.create("Проверка", undefined).inbox();
+  const inbox = WebProfile.create(WebKeys.prepare(), "Проверка", undefined).inbox();
   const received: { relay: string; id: string; republished?: string }[] = [];
   window.shumCheck = { ok: false, details: { inbox, connected: [], received } };
   log(`ящик ${inbox}`);
@@ -51,7 +51,7 @@ async function run() {
       const r = indexedDB.deleteDatabase("shum-check");
       r.onsuccess = r.onerror = r.onblocked = resolve;
     });
-    const { id, profile } = await createProfile("Проверка", "42");
+    const { id, profile } = await createProfile(WebKeys.prepare(), "Проверка", "42");
     log(`создан профиль ${id.slice(0, 8)}…`);
     const state = JSON.parse(profile.state());
     state.conversations = [{ id: "c1", title: "Аня" }];

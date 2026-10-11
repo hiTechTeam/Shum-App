@@ -8,9 +8,9 @@
 //   meta      which profile is open
 // Every save is one IndexedDB transaction; Shum-Core takes the new state only
 // after it completed.
-import init, { WebProfile } from "./core/shum_web.js";
+import init, { WebKeys, WebProfile } from "./core/shum_web.js";
 
-export { WebProfile };
+export { WebKeys, WebProfile };
 
 type Entry = {
   id: string;
@@ -22,7 +22,7 @@ type Entry = {
   created: number;
 };
 type StoredRecord = { profile: string; bucket: string; id: string; position: number; payload: string };
-type Plan = { write: Omit<StoredRecord, "profile">[]; delete: [string, string][] };
+export type Plan = { write: Omit<StoredRecord, "profile">[]; delete: [string, string][] };
 
 let database = "shum";
 let opened: Promise<IDBDatabase> | null = null;
@@ -34,7 +34,7 @@ export function useDatabase(name: string) {
   opened = null;
 }
 
-function ready() {
+export function ready() {
   loaded ??= init();
   return loaded;
 }
@@ -76,10 +76,36 @@ function sealParams(iv: Uint8Array<ArrayBuffer>, id: string): AesGcmParams {
   return { name: "AES-GCM", iv, additionalData: encoder.encode(id) };
 }
 
-/** Creates a profile and stores it before returning it. */
-export async function createProfile(name: string, avatarSeed?: string): Promise<{ id: string; profile: WebProfile }> {
+/** Creates a profile from prepared keys and stores it before returning it. */
+export async function createProfile(
+  keys: WebKeys,
+  name: string,
+  avatarSeed?: string,
+): Promise<{ id: string; profile: WebProfile }> {
   await ready();
-  const profile = WebProfile.create(name, avatarSeed);
+  const profile = WebProfile.create(keys, name, avatarSeed);
+  return { id: await add(profile, name), profile };
+}
+
+/** Restores a backup file as a new selected profile. With `replace` a
+ *  profile of the same identity is removed first; without it that is an error. */
+export async function restoreProfile(file: Uint8Array, password: string, replace: boolean): Promise<string> {
+  await ready();
+  const profile = WebProfile.restore(file, password);
+  try {
+    const id = profile.ownerId();
+    if ((await listProfiles()).some((p) => p.id === id)) {
+      if (!replace) throw new Error("Этот профиль уже есть на компьютере");
+      await deleteProfile(id);
+    }
+    return await add(profile, JSON.parse(profile.card()).name);
+  } finally {
+    profile.free();
+  }
+}
+
+/** Stores a new profile and selects it. */
+async function add(profile: WebProfile, name: string): Promise<string> {
   const id = profile.ownerId();
   const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -97,7 +123,7 @@ export async function createProfile(name: string, avatarSeed?: string): Promise<
   await finished(tx);
   // Ask the browser not to clear the profile under storage pressure.
   await navigator.storage?.persist?.().catch(() => false);
-  return { id, profile };
+  return id;
 }
 
 /** Local profiles, oldest first. */
@@ -111,6 +137,14 @@ export async function selectedProfile(): Promise<string | null> {
   const d = await db();
   const meta = await result(d.transaction("meta").objectStore("meta").get("selected"));
   return (meta as { value?: string } | undefined)?.value ?? null;
+}
+
+/** Makes `id` the profile that opens next time. */
+export async function selectProfile(id: string) {
+  const d = await db();
+  const tx = d.transaction("meta", "readwrite");
+  tx.objectStore("meta").put({ key: "selected", value: id });
+  await finished(tx);
 }
 
 /** Opens a stored profile: unseals its keys and checks every record. */
@@ -131,7 +165,7 @@ export async function openProfile(id: string): Promise<WebProfile> {
   }
   const pending = profile.pendingPlan();
   if (pending) {
-    await store(id, JSON.parse(pending));
+    await persist(id, JSON.parse(pending));
     profile.applied();
   }
   return profile;
@@ -141,17 +175,28 @@ export async function openProfile(id: string): Promise<WebProfile> {
 export async function save(id: string, profile: WebProfile, state: unknown): Promise<boolean> {
   const plan = profile.plan(JSON.stringify(state));
   if (!plan) return false;
-  await store(id, JSON.parse(plan));
+  await persist(id, JSON.parse(plan));
   profile.applied();
   return true;
 }
 
-async function store(id: string, plan: Plan) {
+/** Stores a plan of Shum-Core's records in one transaction. */
+export async function persist(id: string, plan: Plan) {
   const d = await db();
   const tx = d.transaction("records", "readwrite");
   const records = tx.objectStore("records");
   for (const record of plan.write) records.put({ ...record, profile: id });
   for (const [bucket, index] of plan.delete) records.delete([id, bucket, index]);
+  await finished(tx);
+}
+
+/** Keeps the local list's name in step with the profile's card. */
+export async function renameProfile(id: string, name: string) {
+  const d = await db();
+  const tx = d.transaction("profiles", "readwrite");
+  const profiles = tx.objectStore("profiles");
+  const entry: Entry | undefined = await result(profiles.get(id));
+  if (entry) profiles.put({ ...entry, name });
   await finished(tx);
 }
 

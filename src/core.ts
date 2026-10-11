@@ -1,7 +1,7 @@
 // The interface's only way to Shum-Core: requests to the profile owner and
-// pixel avatars. Outside the desktop app (browser preview) test data answers.
+// pixel avatars. In the desktop app the Rust side answers; in the browser
+// version Shum-Core runs in the page (src/web).
 import { invoke } from "@tauri-apps/api/core";
-import { fakeCall, fakeShell } from "./fake";
 
 export type Phase = "ready" | "outgoingPending" | "incomingPending" | "accepted" | "declinedByPeer" | "declinedLocally";
 
@@ -64,30 +64,40 @@ export type Request =
   | { command: "add"; link: string }
   | { command: "clear"; contact: string }
   | { command: "block"; contact: string; blocked: boolean }
-  | { command: "profile"; name: string | null; bio: string | null; seed: null };
+  | { command: "profile"; name: string | null; bio: string | null; seed: null }
+  | { command: "backup"; password: string; created_at: string };
 
 export type LocalProfile = { id: string; name: string; ownerId: string };
 
-/** Commands of the desktop shell; the browser preview answers some of them. */
-export function shell<T>(command: string, args: Record<string, unknown> = {}): Promise<T> {
-  if (inApp) return invoke<T>(command, args);
-  return fakeShell<T>(command, args);
-}
-
 export const inApp = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
+/** The browser version, loaded only there. Its errors become failures. */
+async function browser<T>(use: (web: typeof import("./web/backend")) => Promise<T>): Promise<T> {
+  const web = await import("./web/backend");
+  try {
+    return await use(web);
+  } catch (error) {
+    throw error instanceof Error ? { kind: "text", text: error.message } : error;
+  }
+}
+
+/** Commands of the shell: the desktop app's Rust side or the browser version. */
+export function shell<T>(command: string, args: Record<string, unknown> = {}): Promise<T> {
+  if (inApp) return invoke<T>(command, args);
+  return browser((web) => web.browserShell<T>(command, args));
+}
+
 export function call<T = unknown>(request: Request): Promise<T> {
-  return inApp ? invoke<T>("request", { request }) : fakeCall<T>(request);
+  return inApp ? invoke<T>("request", { request }) : browser((web) => web.browserCall<T>(request));
 }
 
 const avatars = new Map<string, Promise<Uint8ClampedArray<ArrayBuffer>>>();
 
 /** 36x36 RGBA pixels of the v1 avatar, drawn by Shum-Core. */
-export function avatarPixels(seed: string): Promise<Uint8ClampedArray<ArrayBuffer>> | null {
-  if (!inApp) return null;
+export function avatarPixels(seed: string): Promise<Uint8ClampedArray<ArrayBuffer>> {
   let pixels = avatars.get(seed);
   if (!pixels) {
-    pixels = invoke<number[]>("avatar", { seed }).then((bytes) => new Uint8ClampedArray(bytes));
+    pixels = shell<number[]>("avatar", { seed }).then((bytes) => new Uint8ClampedArray(bytes));
     avatars.set(seed, pixels);
   }
   return pixels;
@@ -96,11 +106,10 @@ export function avatarPixels(seed: string): Promise<Uint8ClampedArray<ArrayBuffe
 const reactionPictures = new Map<ReactionKind, Promise<Uint8ClampedArray<ArrayBuffer>>>();
 
 /** 12x12 RGBA pixels of a reaction, drawn by Shum-Core. */
-export function reactionPixels(kind: ReactionKind): Promise<Uint8ClampedArray<ArrayBuffer>> | null {
-  if (!inApp) return null;
+export function reactionPixels(kind: ReactionKind): Promise<Uint8ClampedArray<ArrayBuffer>> {
   let pixels = reactionPictures.get(kind);
   if (!pixels) {
-    pixels = invoke<number[]>("reaction", { kind }).then((bytes) => new Uint8ClampedArray(bytes));
+    pixels = shell<number[]>("reaction", { kind }).then((bytes) => new Uint8ClampedArray(bytes));
     reactionPictures.set(kind, pixels);
   }
   return pixels;
@@ -135,18 +144,6 @@ export const reactionNames: Record<ReactionKind, string> = {
   coffin: "Гроб",
   hundred: "100",
   horror: "Кошмар",
-};
-
-/** Stand-in for the browser preview, where Shum-Core does not draw. */
-export const reactionEmoji: Record<ReactionKind, string> = {
-  heart: "❤️",
-  like: "👍",
-  dislike: "👎",
-  laugh: "😂",
-  fire: "🔥",
-  coffin: "⚰️",
-  hundred: "💯",
-  horror: "😱",
 };
 
 export const eventLabels: Record<string, string> = {
