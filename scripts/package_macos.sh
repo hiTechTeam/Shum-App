@@ -29,6 +29,12 @@ export MACOSX_DEPLOYMENT_TARGET=15.0
 export SDKROOT="$(/usr/bin/xcrun --sdk macosx --show-sdk-path)"
 export CFLAGS_aarch64_apple_darwin=-mmacosx-version-min=15.0
 export CFLAGS_x86_64_apple_darwin=-mmacosx-version-min=15.0
-# CI skips the Finder window layout, which would ask to control Finder.
-CI=true npm run tauri build -- --target universal-apple-darwin --bundles app,dmg
+# The DMG window layout (background, icon places) is set by Finder through
+# AppleScript; the first run asks to allow controlling Finder.
+mkdir -p src-tauri/dmg/.render
+swift scripts/dmg_background.swift src-tauri/dmg/.render
+tiffutil -cathidpicheck src-tauri/dmg/.render/background.png src-tauri/dmg/.render/background@2x.png \
+    -out src-tauri/dmg/background.tiff
+rm -rf src-tauri/dmg/.render
+npm run tauri build -- --target universal-apple-darwin --bundles app,dmg
 ls -l src-tauri/target/universal-apple-darwin/release/bundle/dmg/
