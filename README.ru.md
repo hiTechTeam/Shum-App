@@ -2,7 +2,7 @@
 
 [English](README.md) · Русский
 
-Shum для компьютера: чаты, контакты и люди рядом по Bluetooth. Превью 0.1.0 для macOS 15 и новее (Apple Silicon и Intel), Windows 10 и 11 (x64, ARM64) и Linux (x64, ARM64).
+Shum для компьютера: чаты, контакты и люди рядом по Bluetooth. Превью 0.1.1 для macOS 15 и новее (Apple Silicon и Intel), Windows 10 и 11 (x64, ARM64) и Linux (x64, ARM64).
 
 Интерфейс на React (`src`), оболочка на Tauri (`src-tauri`). Вся логика сообщений в [Shum-Core](https://github.com/hiTechTeam/Shum-Core), приложение её только показывает.
 

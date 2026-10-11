@@ -507,6 +507,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
+name = "byteorder-lite"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f1fe948ff07f4bd06c30984e69f5b4899c516a3ef74f34df92a2df2ab535495"
+
+[[package]]
 name = "bytes"
 version = "1.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2276,6 +2282,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "image"
+version = "0.25.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85ab80394333c02fe689eaf900ab500fbd0c2213da414687ebf995a65d5a6104"
+dependencies = [
+ "bytemuck",
+ "byteorder-lite",
+ "moxcms",
+ "num-traits",
+ "png 0.18.1",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2737,6 +2756,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "moxcms"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb85c154ba489f01b25c0d36ae69a87e4a1c73a72631fc6c0eb6dde34a73e44b"
+dependencies = [
+ "num-traits",
+ "pxfm",
+]
+
+[[package]]
 name = "muda"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3041,6 +3070,7 @@ checksum = "e3e0adef53c21f888deb4fa59fc59f7eb17404926ee8a6f59f5df0fd7f9f3272"
 dependencies = [
  "bitflags 2.13.2",
  "block2",
+ "libc",
  "objc2",
  "objc2-core-foundation",
 ]
@@ -3522,6 +3552,12 @@ checksum = "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9"
 dependencies = [
  "unicode-ident",
 ]
+
+[[package]]
+name = "pxfm"
+version = "0.1.30"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d55d956fa96f5ec02be2e13af0e20391a5aa83d6a074e3ad368959d0fab299ea"
 
 [[package]]
 name = "qrcode"
@@ -4354,11 +4390,12 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
 name = "shum-app"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
  "directories",
+ "objc2-foundation",
  "qrcode",
  "serde",
  "serde_json",
@@ -4373,7 +4410,7 @@ dependencies = [
 [[package]]
 name = "shum-core"
 version = "0.1.5"
-source = "git+https://github.com/hiTechTeam/Shum-Core.git?rev=f71e5d61216d5725880e3bc265d4501aa10885d7#f71e5d61216d5725880e3bc265d4501aa10885d7"
+source = "git+https://github.com/hiTechTeam/Shum-Core.git?rev=05fc5617622825be6cf8edbe4450620b92333529#05fc5617622825be6cf8edbe4450620b92333529"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",
@@ -4399,7 +4436,7 @@ dependencies = [
 [[package]]
 name = "shum-session"
 version = "0.1.5"
-source = "git+https://github.com/hiTechTeam/Shum-Core.git?rev=f71e5d61216d5725880e3bc265d4501aa10885d7#f71e5d61216d5725880e3bc265d4501aa10885d7"
+source = "git+https://github.com/hiTechTeam/Shum-Core.git?rev=05fc5617622825be6cf8edbe4450620b92333529#05fc5617622825be6cf8edbe4450620b92333529"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -4421,7 +4458,7 @@ dependencies = [
 [[package]]
 name = "shum-store"
 version = "0.1.5"
-source = "git+https://github.com/hiTechTeam/Shum-Core.git?rev=f71e5d61216d5725880e3bc265d4501aa10885d7#f71e5d61216d5725880e3bc265d4501aa10885d7"
+source = "git+https://github.com/hiTechTeam/Shum-Core.git?rev=05fc5617622825be6cf8edbe4450620b92333529#05fc5617622825be6cf8edbe4450620b92333529"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",
@@ -4444,7 +4481,7 @@ dependencies = [
 [[package]]
 name = "shum-transport-ble"
 version = "0.1.5"
-source = "git+https://github.com/hiTechTeam/Shum-Core.git?rev=f71e5d61216d5725880e3bc265d4501aa10885d7#f71e5d61216d5725880e3bc265d4501aa10885d7"
+source = "git+https://github.com/hiTechTeam/Shum-Core.git?rev=05fc5617622825be6cf8edbe4450620b92333529#05fc5617622825be6cf8edbe4450620b92333529"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -4463,7 +4500,7 @@ dependencies = [
 [[package]]
 name = "shum-transport-nostr"
 version = "0.1.5"
-source = "git+https://github.com/hiTechTeam/Shum-Core.git?rev=f71e5d61216d5725880e3bc265d4501aa10885d7#f71e5d61216d5725880e3bc265d4501aa10885d7"
+source = "git+https://github.com/hiTechTeam/Shum-Core.git?rev=05fc5617622825be6cf8edbe4450620b92333529#05fc5617622825be6cf8edbe4450620b92333529"
 dependencies = [
  "base64 0.22.1",
  "futures-util",
@@ -4815,6 +4852,7 @@ dependencies = [
  "gtk",
  "heck 0.5.0",
  "http",
+ "image",
  "jni 0.21.1",
  "libc",
  "log",

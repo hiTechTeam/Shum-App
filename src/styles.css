@@ -251,3 +251,11 @@ input { font: inherit; color: inherit; }
 .step .actions .button { flex: 1; }
 .entry-card h2 svg { color: var(--accent); }
 .profile-row .link-button.danger { margin-left: 8px; }
+
+/* "In chat" mark: 3x3 pixels, pulsing while the contact types */
+.presence { display: inline-grid; vertical-align: middle; }
+.presence > span { display: block; }
+.presence > span > span { display: block; width: 100%; height: 100%; background: var(--accent); transition: opacity 0.16s ease-in-out; }
+.status { display: inline-flex; align-items: center; gap: 4px; }
+.avatar-wrap { position: relative; flex: none; display: inline-block; line-height: 0; }
+.presence-badge { position: absolute; right: -2px; bottom: -1px; padding: 2.5px 3.5px; border-radius: 4px; background: rgba(0,0,0,0.45); box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.18); line-height: 0; }

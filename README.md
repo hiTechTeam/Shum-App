@@ -2,7 +2,7 @@
 
 English · [Русский](README.ru.md)
 
-Shum for the computer: chats, contacts and people nearby over Bluetooth. Preview 0.1.0 for macOS 15+ (Apple Silicon and Intel), Windows 10 and 11 (x64, ARM64) and Linux (x64, ARM64).
+Shum for the computer: chats, contacts and people nearby over Bluetooth. Preview 0.1.1 for macOS 15+ (Apple Silicon and Intel), Windows 10 and 11 (x64, ARM64) and Linux (x64, ARM64).
 
 The interface is React (`src`), the desktop shell is Tauri (`src-tauri`). Message logic lives in [Shum-Core](https://github.com/hiTechTeam/Shum-Core); the app only shows it.
 

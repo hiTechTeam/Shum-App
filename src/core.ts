@@ -55,6 +55,8 @@ export type Request =
   | { command: "send"; contact: string; text: string }
   | { command: "read"; contact: string }
   | { command: "focus"; contact: string | null }
+  | { command: "typing"; contact: string; active: boolean }
+  | { command: "presence"; contact: string; online: boolean }
   | { command: "accept"; contact: string }
   | { command: "decline"; contact: string }
   | { command: "invite"; contact: string }

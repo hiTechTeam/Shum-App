@@ -1,6 +1,6 @@
 [package]
 name = "shum-app"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 publish = false
@@ -9,7 +9,7 @@ publish = false
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
@@ -17,6 +17,9 @@ base64 = "0.22"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 directories = "6"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
-shum-core = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "f71e5d61216d5725880e3bc265d4501aa10885d7" }
-shum-store = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "f71e5d61216d5725880e3bc265d4501aa10885d7" }
-shum-session = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "f71e5d61216d5725880e3bc265d4501aa10885d7" }
+shum-core = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "05fc5617622825be6cf8edbe4450620b92333529" }
+shum-store = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "05fc5617622825be6cf8edbe4450620b92333529" }
+shum-session = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "05fc5617622825be6cf8edbe4450620b92333529" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-foundation = { version = "0.3", features = ["NSProcessInfo", "NSString"] }

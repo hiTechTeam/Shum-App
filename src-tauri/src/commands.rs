@@ -58,6 +58,12 @@ pub fn reaction(kind: shum_core::packet::ReactionKind) -> Vec<u8> {
         .collect()
 }
 
+/// Which cells of the 3x3 "in chat" mark are lit for a contact.
+#[tauri::command]
+pub fn presence_pattern(seed: String) -> Vec<bool> {
+    shum_core::presence::pattern(&seed).to_vec()
+}
+
 /// A new random avatar seed, as text for the same reason as `quote_seeds`.
 #[tauri::command]
 pub fn new_avatar_seed() -> Result<String, Failure> {

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Shum",
-  "version": "0.1.0",
-  "identifier": "org.shum.app",
+  "version": "0.1.1",
+  "identifier": "org.shum.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",

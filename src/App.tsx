@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AddContact, ContactCard, ContactList } from "./contacts";
 import { ProfileNav, ProfilePage, type Section } from "./profile";
+import { PresenceBadge, PresencePixels } from "./presence";
 import { Avatar, Chip, Confirm, ReactionArt } from "./ui";
 import { Welcome } from "./welcome";
 import {
@@ -73,10 +74,8 @@ function dayLabel(timestamp: number) {
   return new Date(timestamp).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 }
 
+/** The line under a contact's name, worded as in the iOS app. */
 function contactStatus(contact: Contact) {
-  if (contact.typing) return "печатает…";
-  if (contact.online) return "в сети";
-  if (contact.nearby) return "рядом";
   switch (contact.phase) {
     case "incomingPending":
       return "приглашение в чат";
@@ -85,9 +84,14 @@ function contactStatus(contact: Contact) {
     case "declinedByPeer":
     case "declinedLocally":
       return "приглашение отклонено";
-    default:
-      return "";
   }
+  // Someone typing has the chat open even before the presence mark arrives.
+  const inChat = contact.online || contact.typing;
+  const nearby = contact.nearby ? (contact.distance != null ? `рядом · ~${contact.distance} м` : "рядом") : "";
+  if (inChat && nearby) return `в чате · ${nearby}`;
+  if (inChat) return "в чате";
+  if (nearby) return nearby;
+  return "не в чате";
 }
 
 export default function App() {
@@ -169,7 +173,7 @@ export default function App() {
       .sort((a, b) => (b.last?.timestamp ?? 0) - (a.last?.timestamp ?? 0));
   }, [snapshot]);
 
-  const visible = useMemo(() => {
+  const listed = useMemo(() => {
     const text = query.trim().toLocaleLowerCase("ru");
     return chats.filter((chat) => {
       if (filter === "nearby" ? !chat.contact.nearby : !chat.listed) return false;
@@ -184,7 +188,8 @@ export default function App() {
   const invitations = chats.filter((c) => c.contact.phase === "incomingPending").length;
 
   // Opening a chat marks it read and tells the contact which chat is in front.
-  const shown = tab === "chats" ? selected : null;
+  const visible = useVisible();
+  const shown = tab === "chats" && visible ? selected : null;
   useEffect(() => {
     if (!shown) return;
     call({ command: "focus", contact: shown }).catch(() => {});
@@ -281,10 +286,13 @@ export default function App() {
             <Chip active={filter === "unread"} onClick={() => setFilter("unread")} label="Непрочитанные" count={unreadChats} />
           </div>
           <ul className="rows">
-            {visible.map(({ contact, last, badge }) => (
+            {listed.map(({ contact, last, badge }) => (
               <li key={contact.id}>
                 <button className={`row${contact.id === selected ? " selected" : ""}`} onClick={() => setSelected(contact.id)}>
-                  <Avatar card={contact.card} id={contact.id} size={48} />
+                  <span className="avatar-wrap">
+                    <Avatar card={contact.card} id={contact.id} size={48} />
+                    {(contact.online || contact.typing) && <PresenceBadge seed={contact.id} typing={contact.typing} />}
+                  </span>
                   <span className="row-text">
                     <span className="row-top">
                       <strong>{contact.card.name}</strong>
@@ -301,7 +309,7 @@ export default function App() {
                 </button>
               </li>
             ))}
-            {visible.length === 0 && (
+            {listed.length === 0 && (
               <li className="list-empty">
                 {filter === "nearby" ? `Рядом пока никого. ${bluetoothStatus(snapshot).text}` : "Чатов пока нет"}
               </li>
@@ -406,6 +414,8 @@ function Conversation(props: {
 }) {
   const { contact, act } = props;
   const [draft, setDraft] = useState("");
+  const draftRef = useRef("");
+  draftRef.current = draft;
   const [picker, setPicker] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [find, setFind] = useState("");
@@ -413,6 +423,23 @@ function Conversation(props: {
   const [confirm, setConfirm] = useState<"clear" | "block" | null>(null);
   const end = useRef<HTMLDivElement>(null);
   const writable = contact.phase === "accepted";
+  const typedAt = useRef(0);
+  const visible = useVisible();
+
+  // While the chat is open and the window is not hidden, tell the contact
+  // every 4 seconds that you are in this chat and whether you are typing, as
+  // the CLI does. Without the heartbeat the contact sees neither.
+  useEffect(() => {
+    if (!visible || !writable) return;
+    const beat = () => {
+      const typing = draftRef.current.trim().length > 0 && Date.now() - typedAt.current < 5000;
+      call({ command: "typing", contact: contact.id, active: typing }).catch(() => {});
+      call({ command: "presence", contact: contact.id, online: true }).catch(() => {});
+    };
+    beat();
+    const timer = setInterval(beat, 4000);
+    return () => clearInterval(timer);
+  }, [contact.id, visible, writable]);
 
   const items = useMemo(() => {
     const needle = find.trim().toLocaleLowerCase("ru");
@@ -461,6 +488,7 @@ function Conversation(props: {
     const text = draft.trim();
     if (!text || !writable) return;
     setDraft("");
+    call({ command: "typing", contact: contact.id, active: false }).catch(() => {});
     act({ command: "send", contact: contact.id, text });
   };
 
@@ -485,7 +513,12 @@ function Conversation(props: {
           <Avatar card={contact.card} id={contact.id} size={36} />
           <div>
             <strong>{contact.card.name}</strong>
-            <span className={contact.online || contact.typing ? "status live" : "status"}>{contactStatus(contact)}</span>
+            <span className="status">
+              {(contact.online || contact.typing) && (
+                <PresencePixels seed={contact.id} typing={contact.typing} cell={2} gap={1} off="rgba(142,142,147,0.3)" />
+              )}
+              {contactStatus(contact)}
+            </span>
           </div>
         </div>
         <button
@@ -675,7 +708,15 @@ function Conversation(props: {
             placeholder={placeholder}
             disabled={!writable}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              const wasEmpty = !draft.trim();
+              setDraft(e.target.value);
+              typedAt.current = Date.now();
+              // The first letter shows "typing…" at once, not at the next beat.
+              if (wasEmpty && e.target.value.trim()) {
+                call({ command: "typing", contact: contact.id, active: true }).catch(() => {});
+              }
+            }}
             onKeyDown={(e) => e.key === "Enter" && submit()}
           />
           <button className="send" disabled={!writable || !draft.trim()} onClick={submit} title="Отправить">
@@ -685,4 +726,15 @@ function Conversation(props: {
       </footer>
     </>
   );
+}
+
+/** Whether the window is shown: not minimized or behind another space. */
+function useVisible() {
+  const [visible, setVisible] = useState(() => document.visibilityState === "visible");
+  useEffect(() => {
+    const update = () => setVisible(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+  return visible;
 }
