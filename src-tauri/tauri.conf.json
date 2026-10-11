@@ -36,6 +36,12 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "category": "SocialNetworking",
+    "copyright": "© 2026 Shum",
+    "macOS": {
+      "minimumSystemVersion": "15.0",
+      "signingIdentity": "9CE51B5C3430742E7860FC77583B41BAA8355085"
+    }
   }
 }

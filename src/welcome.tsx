@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { describe, shell } from "./core";
 import { IconKey } from "./icons";
+import { PixelField } from "./pixel-field";
 import { Avatar, Modal } from "./ui";
 
 type Step = "entry" | "name" | "avatar" | "security";
@@ -70,6 +71,7 @@ export function Welcome(props: { onDone: () => void; onCancel?: () => void; rest
         </button>
       )}
 
+      {step === "entry" && <PixelField />}
       {step === "entry" && (
         <div className="entry">
           <div className="entry-text">
@@ -272,7 +274,7 @@ function PixelTitle() {
     ),
   );
   return (
-    <svg className="pixel-title" viewBox={`0 0 ${(4 * 6 - 1) * cell} ${7 * cell}`} role="img" aria-label="Shum">
+    <svg className="pixel-title" shapeRendering="crispEdges" viewBox={`0 0 ${(4 * 6 - 1) * cell} ${7 * cell}`} role="img" aria-label="Shum">
       {rects}
     </svg>
   );

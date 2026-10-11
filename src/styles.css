@@ -210,11 +210,9 @@ input { font: inherit; color: inherit; }
 .rail-item.active .rail-avatar .avatar { box-shadow: 0 0 0 2px var(--accent); }
 
 /* First run */
-.welcome { position: relative; flex: 1; display: grid; place-items: center; padding: 32px; overflow: auto;
-  background:
-    radial-gradient(circle at 100% 0, #30d15814 0, transparent 45%),
-    radial-gradient(circle at 0 100%, #30d1580f 0, transparent 40%),
-    var(--canvas); }
+.welcome { position: relative; flex: 1; display: grid; place-items: center; padding: 32px; overflow: auto; background: var(--canvas); }
+.welcome .noise { position: absolute; inset: 0; pointer-events: none; }
+.entry, .step { position: relative; }
 .welcome-cancel { position: absolute; top: 20px; right: 24px; }
 .entry { width: 100%; max-width: 980px; display: flex; align-items: center; justify-content: space-between; gap: 48px; }
 .entry-text { max-width: 420px; display: flex; flex-direction: column; gap: 20px; }
