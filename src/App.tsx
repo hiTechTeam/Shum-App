@@ -239,7 +239,14 @@ export default function App() {
     return (
       <div className="app">
         <div className="problem">
-          <p>{problem ?? "Открываю профиль…"}</p>
+          {problem ? (
+            <p>{problem}</p>
+          ) : (
+            <div>
+              <p className="loading-title">Открываю Shum…</p>
+              <p className="small">Это может занять несколько секунд.</p>
+            </div>
+          )}
         </div>
       </div>
     );
