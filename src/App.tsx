@@ -501,7 +501,11 @@ function Conversation(props: {
         ? "Ответьте на приглашение, чтобы писать"
         : contact.phase === "outgoingPending"
           ? "Дождитесь ответа на приглашение"
-          : "Пригласите собеседника, чтобы писать";
+          : contact.phase === "declinedLocally"
+            ? "Примите приглашение, если передумали"
+            : contact.phase === "declinedByPeer"
+              ? "Собеседник отклонил приглашение"
+              : "Пригласите собеседника, чтобы писать";
 
   return (
     <>
@@ -684,6 +688,18 @@ function Conversation(props: {
                 </button>
                 <button className="button primary" onClick={() => act({ command: "accept", contact: contact.id })}>
                   Принять
+                </button>
+              </div>
+            </div>
+          )}
+          {contact.phase === "declinedLocally" && (
+            <div className="invitation">
+              <Avatar card={contact.card} id={contact.id} size={72} />
+              <h2>Вы отклонили приглашение</h2>
+              <p className="hint">Если передумали, примите его: {contact.card.name} получит ответ, и можно будет общаться.</p>
+              <div className="actions">
+                <button className="button primary" onClick={() => act({ command: "accept", contact: contact.id })}>
+                  Принять приглашение
                 </button>
               </div>
             </div>
