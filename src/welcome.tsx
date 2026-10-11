@@ -9,6 +9,8 @@ import { Avatar, Modal } from "./ui";
 type Step = "entry" | "name" | "avatar" | "security";
 
 const securitySteps = ["Криптографические ключи", "Шифрование", "Защищённое хранилище", "Проверка"];
+/** How long each security check stays in view. */
+const STEP_MS = 650;
 
 /**
  * The whole first-run flow, in the order of every Shum client: keys are made
@@ -37,20 +39,29 @@ export function Welcome(props: { onDone: () => void; onCancel?: () => void; rest
     }
   };
 
-  // Keys are made and checked in Shum-Core; the steps light up meanwhile.
+  // Keys are made and checked in Shum-Core. The four checks light up one by
+  // one at a readable pace even when Shum-Core is done at once, and the last
+  // one only after it really is.
   useEffect(() => {
     if (step !== "security") return;
     let alive = true;
+    let ready = false;
+    let lit = 0;
     setDone(0);
     setError(null);
-    const timer = setInterval(() => setDone((n) => Math.min(n + 1, 3)), 350);
+    const timer = setInterval(() => {
+      if (lit < 3 || ready) lit += 1;
+      setDone(lit);
+      if (lit === 4) {
+        clearInterval(timer);
+        setTimeout(() => alive && setStep("name"), 700);
+      }
+    }, STEP_MS);
     shell<string>("prepare_keys").then(
       (initial) => {
-        clearInterval(timer);
         if (!alive) return;
         setSeed(initial);
-        setDone(4);
-        setTimeout(() => alive && setStep("name"), 500);
+        ready = true;
       },
       (e) => {
         clearInterval(timer);
