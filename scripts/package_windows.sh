@@ -8,6 +8,7 @@ cd "$(dirname "$0")/.."
 export PATH="/opt/homebrew/opt/llvm/bin:/opt/homebrew/opt/lld/bin:$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$HOME/.cargo/bin:$PATH"
 # makensis aborts (std::bad_alloc) when no locale is set.
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+version=$(sed -n 's/^  "version": "\(.*\)",$/\1/p' src-tauri/tauri.conf.json)
 out=packages/windows
 rm -rf "$out"
 mkdir -p "$out"
@@ -15,6 +16,7 @@ for pair in x64:x86_64-pc-windows-msvc arm64:aarch64-pc-windows-msvc; do
     arch=${pair%%:*}
     target=${pair#*:}
     npm run tauri build -- --runner cargo-xwin --target "$target" --bundles nsis
-    cp src-tauri/target/"$target"/release/bundle/nsis/*-setup.exe "$out/Shum-Windows-$arch-setup.exe"
+    # Older versions may still lie next to it: copy this version only.
+    cp src-tauri/target/"$target"/release/bundle/nsis/Shum_"$version"_*-setup.exe "$out/Shum-Windows-$arch-setup.exe"
 done
 (cd "$out" && shasum -a 256 Shum-Windows-*-setup.exe > SHA256SUMS && ls -l)
