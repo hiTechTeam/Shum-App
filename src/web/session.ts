@@ -29,7 +29,11 @@ export class BrowserSession {
   private chain: Promise<void> = Promise.resolve();
   private failed = false;
   private timer: number;
-  private online = () => this.step((s) => s.tick(Date.now()));
+  private tick = () => this.step((s) => s.tick(Date.now()));
+  /** Back online or on the tab again: relays reconnect at once. */
+  private wake = () => {
+    if (document.visibilityState === "visible") this.step((s) => s.wake(Date.now()));
+  };
 
   constructor(
     readonly id: string,
@@ -38,9 +42,10 @@ export class BrowserSession {
     relays: string[],
   ) {
     this.core = new WebSession(profile, id, name, relays, Date.now());
-    this.timer = window.setInterval(this.online, 1000);
-    window.addEventListener("online", this.online);
-    this.online();
+    this.timer = window.setInterval(this.tick, 1000);
+    window.addEventListener("online", this.wake);
+    document.addEventListener("visibilitychange", this.wake);
+    this.tick();
   }
 
   snapshot(): Snapshot {
@@ -69,7 +74,8 @@ export class BrowserSession {
 
   close() {
     clearInterval(this.timer);
-    window.removeEventListener("online", this.online);
+    window.removeEventListener("online", this.wake);
+    document.removeEventListener("visibilitychange", this.wake);
     for (const socket of this.sockets.values()) socket.close();
     this.sockets.clear();
     // Shum-Core is freed after the last batch of effects.

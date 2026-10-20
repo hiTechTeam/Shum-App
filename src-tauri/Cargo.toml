@@ -1,6 +1,6 @@
 [package]
 name = "shum-app"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 license = "MIT"
 publish = false
@@ -17,9 +17,9 @@ base64 = "0.22"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 directories = "6"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
-shum-core = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "55f80df6f4bca0e07977ac5bb47b6dbbedb10809" }
-shum-store = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "55f80df6f4bca0e07977ac5bb47b6dbbedb10809" }
-shum-session = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "55f80df6f4bca0e07977ac5bb47b6dbbedb10809" }
+shum-core = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "6e41fbc771a7238b3cb79a5e106c783c602a2be9" }
+shum-store = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "6e41fbc771a7238b3cb79a5e106c783c602a2be9" }
+shum-session = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "6e41fbc771a7238b3cb79a5e106c783c602a2be9" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-foundation = { version = "0.3", features = ["NSProcessInfo", "NSString"] }
