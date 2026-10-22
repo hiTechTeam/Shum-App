@@ -6,34 +6,49 @@ import { inApp, type Snapshot } from "./core";
 
 let audio: AudioContext | null = null;
 
-/** Browsers start sound only after the person touched the page once. */
-function unlockSound() {
-  const start = () => {
+/** The page's audio, resumed when possible. Browsers allow sound only after
+ * the person clicked or typed on the page. */
+function sound(): AudioContext | null {
+  try {
     audio ??= new AudioContext();
-    if (audio.state === "suspended") audio.resume().catch(() => {});
-  };
-  window.addEventListener("pointerdown", start, { once: true });
-  window.addEventListener("keydown", start, { once: true });
+  } catch {
+    return null;
+  }
+  if (audio.state === "suspended") audio.resume().catch(() => {});
+  return audio;
 }
-if (typeof window !== "undefined") unlockSound();
+
+// Every click or key press tries to start the sound until it runs.
+if (typeof window !== "undefined") {
+  const unlock = () => {
+    if (sound()?.state !== "running") return;
+    for (const event of ["pointerdown", "keydown", "touchstart"]) window.removeEventListener(event, unlock, true);
+  };
+  for (const event of ["pointerdown", "keydown", "touchstart"]) window.addEventListener(event, unlock, true);
+}
 
 /** Two soft rising tones, made in the page: no sound file to load. */
 function chime() {
-  if (!audio || audio.state !== "running") return;
-  const now = audio.currentTime;
-  [660, 990].forEach((frequency, i) => {
-    const tone = audio!.createOscillator();
-    const gain = audio!.createGain();
-    const at = now + i * 0.11;
-    tone.type = "sine";
-    tone.frequency.value = frequency;
-    gain.gain.setValueAtTime(0, at);
-    gain.gain.linearRampToValueAtTime(0.12, at + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.18);
-    tone.connect(gain).connect(audio!.destination);
-    tone.start(at);
-    tone.stop(at + 0.2);
-  });
+  const context = sound();
+  if (!context) return;
+  const play = () => {
+    const now = context.currentTime;
+    [660, 990].forEach((frequency, i) => {
+      const tone = context.createOscillator();
+      const gain = context.createGain();
+      const at = now + i * 0.11;
+      tone.type = "sine";
+      tone.frequency.value = frequency;
+      gain.gain.setValueAtTime(0, at);
+      gain.gain.linearRampToValueAtTime(0.12, at + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.18);
+      tone.connect(gain).connect(context.destination);
+      tone.start(at);
+      tone.stop(at + 0.2);
+    });
+  };
+  if (context.state === "running") play();
+  else context.resume().then(play).catch(() => {});
 }
 
 const iconLink = () => document.querySelector<HTMLLinkElement>('link[rel="icon"]');
@@ -87,8 +102,11 @@ export function useAttention(snapshot: Snapshot | null, shown: string | null) {
     const invitations = snapshot.contacts.filter((c) => c.phase === "incomingPending").map((c) => `invite:${c.id}`);
     const ids = new Set([...incoming.map((m) => m.id), ...invitations]);
     if (seen.current?.owner === owner) {
+      // A window behind another app still counts as visible, so only a
+      // focused window means the person sees the chat.
+      const looking = document.visibilityState === "visible" && document.hasFocus() ? shown : null;
       const fresh =
-        incoming.some((m) => !seen.current!.ids.has(m.id) && m.contactID !== shown) ||
+        incoming.some((m) => !seen.current!.ids.has(m.id) && m.contactID !== looking) ||
         invitations.some((id) => !seen.current!.ids.has(id));
       if (fresh) chime();
     }
