@@ -110,9 +110,9 @@ input { font: inherit; color: inherit; }
 .button.primary { background: var(--accent); color: var(--on-accent); }
 
 .composer { padding: 12px 16px 16px; }
-.composer-row { display: flex; gap: 12px; }
-.composer input { flex: 1; height: 40px; padding: 0 18px; border-radius: 20px; border: 0; outline: none; background: var(--field); }
-.composer input::placeholder { color: var(--muted); }
+.composer-row { display: flex; align-items: flex-end; gap: 12px; }
+.composer textarea { flex: 1; box-sizing: border-box; min-height: 40px; max-height: 140px; padding: 10px 18px; border-radius: 20px; border: 0; outline: none; background: var(--field); color: inherit; font: inherit; line-height: 20px; resize: none; overflow-y: auto; }
+.composer textarea::placeholder { color: var(--muted); }
 .send { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); }
 .send:disabled { background: var(--field); color: var(--muted); cursor: default; }
 

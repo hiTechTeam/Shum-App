@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAttention } from "./attention";
 import { AddContact, ContactCard, ContactList } from "./contacts";
 import { ProfileNav, ProfilePage, type Section } from "./profile";
 import { PresenceBadge, PresencePixels } from "./presence";
@@ -193,6 +194,7 @@ export default function App() {
   // Opening a chat marks it read and tells the contact which chat is in front.
   const visible = useVisible();
   const shown = tab === "chats" && visible ? selected : null;
+  useAttention(snapshot, shown);
   useEffect(() => {
     if (!shown) return;
     call({ command: "focus", contact: shown }).catch(() => {});
@@ -495,6 +497,16 @@ function Conversation(props: {
     end.current?.scrollIntoView({ block: "end" });
   }, [items.length]);
 
+  // The field grows with the text, as on iPhone, up to six lines; longer
+  // drafts scroll inside it.
+  const field = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const element = field.current;
+    if (!element) return;
+    element.style.height = "auto";
+    element.style.height = `${element.scrollHeight}px`;
+  }, [draft]);
+
   const submit = () => {
     const text = draft.trim();
     if (!text || !writable) return;
@@ -731,7 +743,9 @@ function Conversation(props: {
 
       <footer className="composer">
         <div className="column composer-row">
-          <input
+          <textarea
+            ref={field}
+            rows={1}
             placeholder={placeholder}
             disabled={!writable}
             value={draft}
@@ -744,7 +758,13 @@ function Conversation(props: {
                 call({ command: "typing", contact: contact.id, active: true }).catch(() => {});
               }
             }}
-            onKeyDown={(e) => e.key === "Enter" && submit()}
+            onKeyDown={(e) => {
+              // Enter sends, Shift+Enter starts a new line; IME input is left alone.
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                submit();
+              }
+            }}
           />
           <button className="send" disabled={!writable || !draft.trim()} onClick={submit} title="Отправить">
             <IconArrow />
