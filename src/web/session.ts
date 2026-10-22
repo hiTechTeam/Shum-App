@@ -16,7 +16,11 @@ type Effect =
   | { type: "close"; relay: number }
   | ({ type: "reply"; id: number } & Answer)
   | { type: "connected" | "disconnected" | "eose"; url: string }
-  | { type: "event" | "published" };
+  | { type: "event" | "published" }
+  | { type: "push"; event: string; path: string; headers: Record<string, string>; body: string };
+
+/** Wakes the contact's iPhone when a message waits for it (protocol section 08). */
+const PUSH_SERVICE = "https://push.getshum.tech";
 
 const STORE_FAILED = { kind: "text", text: "Не удалось сохранить данные в браузере. Перезагрузите страницу." };
 
@@ -41,7 +45,7 @@ export class BrowserSession {
     name: string,
     relays: string[],
   ) {
-    this.core = new WebSession(profile, id, name, relays, Date.now());
+    this.core = new WebSession(profile, id, name, relays, true, Date.now());
     this.timer = window.setInterval(this.tick, 1000);
     window.addEventListener("online", this.wake);
     document.addEventListener("visibilitychange", this.wake);
@@ -125,8 +129,20 @@ export class BrowserSession {
           this.waiting.get(effect.id)?.(effect);
           this.waiting.delete(effect.id);
           break;
+        case "push":
+          // Not awaited: a slow push service must not hold up later effects.
+          this.push(effect);
+          break;
       }
     }
+  }
+
+  private push(effect: Extract<Effect, { type: "push" }>) {
+    const body = Uint8Array.from(atob(effect.body), (c) => c.charCodeAt(0));
+    fetch(PUSH_SERVICE + effect.path, { method: "POST", headers: effect.headers, body })
+      .then((response) => (response.ok ? undefined : `push API returned HTTP ${response.status}`))
+      .catch((error: unknown) => String(error))
+      .then((error) => this.step((s) => s.pushed(effect.event, error)));
   }
 
   private connect(relay: number, attempt: number) {
