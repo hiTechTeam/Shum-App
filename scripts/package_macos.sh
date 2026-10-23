@@ -1,9 +1,11 @@
 #!/bin/sh
 # Universal Shum.app and DMG for macOS 15+, Apple Silicon and Intel, signed
 # with the same self-signed "Shum CLI Signing" certificate as the CLI.
-# Output: src-tauri/target/universal-apple-darwin/release/bundle/dmg/
+# Output: src-tauri/target/universal-apple-darwin/release/bundle/dmg/ and the
+# signed update (macos/Shum.app.tar.gz and .sig).
 set -eu
 cd "$(dirname "$0")/.."
+. scripts/updater_key.sh
 export PATH="$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH"
 tools=$(mktemp -d)
 trap 'rm -rf "$tools"' EXIT
@@ -37,4 +39,4 @@ tiffutil -cathidpicheck src-tauri/dmg/.render/background.png src-tauri/dmg/.rend
     -out src-tauri/dmg/background.tiff
 rm -rf src-tauri/dmg/.render
 npm run tauri build -- --target universal-apple-darwin --bundles app,dmg
-ls -l src-tauri/target/universal-apple-darwin/release/bundle/dmg/
+ls -l src-tauri/target/universal-apple-darwin/release/bundle/dmg/ src-tauri/target/universal-apple-darwin/release/bundle/macos/

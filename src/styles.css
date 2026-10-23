@@ -127,6 +127,7 @@ input { font: inherit; color: inherit; }
 .relay.off svg { color: var(--muted); }
 .failed { margin-top: 4px; font-size: 12px; color: var(--danger); }
 .chat { position: relative; }
+.update { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 14px; background: #2c2c2e; box-shadow: 0 8px 24px #0008; z-index: 5; white-space: nowrap; }
 .notice { position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%); max-width: 480px; padding: 10px 16px; border-radius: 12px; background: #2c2c2e; box-shadow: 0 8px 24px #0008; cursor: pointer; }
 .problem { flex: 1; display: grid; place-items: center; padding: 24px; color: var(--muted); text-align: center; }
 .problem .loading-title { margin: 0 0 6px; font-size: 17px; color: var(--text); }

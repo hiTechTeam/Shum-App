@@ -5,6 +5,7 @@
 mod background;
 mod commands;
 mod link;
+mod updates;
 
 use link::Link;
 
@@ -30,7 +31,13 @@ fn main() {
     tauri::Builder::default()
         .manage(Link::new(root))
         .manage(commands::Prepared::default())
-        .setup(|app| Ok(background::tray(app.handle())?))
+        .manage(updates::Pending::default())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .setup(|app| {
+            background::tray(app.handle())?;
+            updates::start(app.handle().clone());
+            Ok(())
+        })
         // Closing the window hides it; the profile keeps receiving messages.
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -56,6 +63,8 @@ fn main() {
             commands::restore_backup,
             commands::delete_profile,
             commands::profile_preview,
+            updates::update_ready,
+            updates::install_update,
         ])
         .build(tauri::generate_context!())
         .expect("Shum failed to start")

@@ -73,6 +73,18 @@
       }
     },
     "shortDescription": "Shum messenger",
-    "longDescription": "Private messenger: chats over the internet and with people nearby over Bluetooth."
+    "longDescription": "Private messenger: chats over the internet and with people nearby over Bluetooth.",
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE2MkJCMkYxQkU2RkVFOTQKUldTVTdtKys4YklycGdjcXArQXJFT1lvdW1IYnk3QzFTYkFLZmpRN2ZRNjVqTjVXWUtvMlJhMHEK",
+      "endpoints": [
+        "https://github.com/hiTechTeam/Shum-App/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

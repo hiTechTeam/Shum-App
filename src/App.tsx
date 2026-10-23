@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAttention } from "./attention";
+import { UpdateBanner } from "./update";
 import { AddContact, ContactCard, ContactList } from "./contacts";
 import { ProfileNav, ProfilePage, type Section } from "./profile";
 import { PresenceBadge, PresencePixels } from "./presence";
@@ -393,6 +394,7 @@ export default function App() {
             {notice}
           </div>
         )}
+        <UpdateBanner />
       </main>
       {adding && <AddContact act={act} onClose={() => setAdding(false)} />}
     </div>

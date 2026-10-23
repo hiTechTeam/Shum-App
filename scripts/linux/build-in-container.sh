@@ -24,6 +24,6 @@ npm ci --no-audit --no-fund
 APPIMAGE_EXTRACT_AND_RUN=1 NO_STRIP=true npm run tauri build -- --bundles "${1:-deb,appimage}"
 for kind in deb appimage; do
     for file in src-tauri/target/release/bundle/$kind/*; do
-        case "$file" in *.deb|*.AppImage) cp "$file" /out/ ;; esac
+        case "$file" in *.deb|*.AppImage|*.AppImage.sig) cp "$file" /out/ ;; esac
     done
 done
