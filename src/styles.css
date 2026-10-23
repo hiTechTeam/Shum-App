@@ -89,6 +89,7 @@ input { font: inherit; color: inherit; }
 .message.out .bubble-line { flex-direction: row-reverse; }
 .bubble { display: flex; align-items: flex-end; gap: 8px; min-height: 32px; padding: 6px 12px; border-radius: 16px; background: var(--bubble-in); line-height: 20px; }
 .bubble span { white-space: pre-wrap; overflow-wrap: anywhere; }
+.delivery { display: inline-flex; align-items: center; }
 .bubble time { flex: none; display: inline-flex; align-items: center; gap: 2px; font-size: 11px; line-height: 16px; color: var(--bubble-in-time); }
 .message.out .bubble { background: var(--bubble-out); }
 .message.out .bubble time { color: var(--bubble-out-time); }

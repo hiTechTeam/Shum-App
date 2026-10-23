@@ -37,6 +37,19 @@ export const IconTicks = (props: { read?: boolean }) => (
     {props.read && <path d="M10 11l1 1 8-9" />}
   </svg>
 );
+export const IconClock = () => (
+  <svg {...svg} width={12} height={12} strokeWidth={2.4}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+);
+
+/** The mark of an outgoing message, as on iPhone: a clock while it is on its
+ * way (queued or waiting on a relay), one tick once the recipient's device has
+ * it, two ticks once it is read. */
+export const DeliveryMark = ({ status }: { status: string }) => {
+  if (status === "read") return <span className="delivery" title="Прочитано"><IconTicks read /></span>;
+  if (status === "delivered") return <span className="delivery" title="Доставлено"><IconTicks /></span>;
+  if (status === "queued" || status === "forwarding") return <span className="delivery" title="Передаётся"><IconClock /></span>;
+  return null;
+};
 export const IconPlus = () => (
   <svg {...svg} strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
 );

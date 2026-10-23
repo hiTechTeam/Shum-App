@@ -33,7 +33,7 @@ import {
   IconPanel,
   IconSearch,
   IconSmile,
-  IconTicks,
+  DeliveryMark,
 } from "./icons";
 
 type Filter = "all" | "nearby" | "invitations" | "unread";
@@ -41,7 +41,7 @@ type Tab = "chats" | "contacts" | "profile";
 
 type Chat = {
   contact: Contact;
-  last: { text: string; timestamp: number; outgoing: boolean; read: boolean } | null;
+  last: { text: string; timestamp: number; outgoing: boolean; status: string } | null;
   badge: number;
   /** Has a conversation or invitation; people only nearby are not listed in "All". */
   listed: boolean;
@@ -164,10 +164,10 @@ export default function App() {
         const lastEvent = events[events.length - 1];
         let summary: Chat["last"] = null;
         if (last && (!lastEvent || last.timestamp >= lastEvent.timestamp)) {
-          summary = { text: last.text, timestamp: last.timestamp, outgoing: last.outgoing, read: last.status === "read" };
+          summary = { text: last.text, timestamp: last.timestamp, outgoing: last.outgoing, status: last.status };
         } else if (lastEvent) {
           const text = contact.phase === "incomingPending" ? "Приглашение в чат" : eventLabels[lastEvent.kind] ?? "";
-          summary = { text, timestamp: lastEvent.timestamp, outgoing: false, read: false };
+          summary = { text, timestamp: lastEvent.timestamp, outgoing: false, status: "" };
         }
         const badge = contact.unread || (contact.phase === "incomingPending" ? 1 : 0);
         return { contact, last: summary, badge, listed: !!summary || contact.phase !== "ready" };
@@ -314,7 +314,7 @@ export default function App() {
                     </span>
                     <span className="row-bottom">
                       <span className="preview">
-                        {last?.outgoing && <IconTicks read={last.read} />}
+                        {last?.outgoing && <DeliveryMark status={last.status} />}
                         {last ? last.text : contact.nearby ? distanceLabel(contact) : "Пригласите в чат, чтобы писать"}
                       </span>
                       {badge > 0 && <span className="count">{badge}</span>}
@@ -651,7 +651,7 @@ function Conversation(props: {
                     <span>{m.text}</span>
                     <time>
                       {clock(m.timestamp)}
-                      {m.outgoing && !failed && <IconTicks read={m.status === "read"} />}
+                      {m.outgoing && !failed && <DeliveryMark status={m.status} />}
                     </time>
                   </div>
                   {writable && (
