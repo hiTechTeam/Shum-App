@@ -17,9 +17,6 @@ mkdir -p "$out"
 for pair in x64:x86_64-pc-windows-msvc arm64:aarch64-pc-windows-msvc; do
     arch=${pair%%:*}
     target=${pair#*:}
-    # ring assembles its ARM64 code with clang, which does not take the
-    # clang-cl flags cargo-xwin passes by default.
-    if [ "$arch" = arm64 ]; then export XWIN_CROSS_COMPILER=clang; else unset XWIN_CROSS_COMPILER; fi
     npm run tauri build -- --runner cargo-xwin --target "$target" --bundles nsis
     # Older versions may still lie next to it: copy this version only.
     cp src-tauri/target/"$target"/release/bundle/nsis/Shum_"$version"_*-setup.exe "$out/Shum-Windows-$arch-setup.exe"
