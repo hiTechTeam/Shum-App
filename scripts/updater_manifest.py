@@ -5,9 +5,8 @@ Usage: python3 scripts/updater_manifest.py packages/release-<version>
 
 The release folder holds the files under their published names, each signed
 update with its .sig next to it:
-  Shum-macOS.app.tar.gz                           (universal: both Mac chips)
+  Shum-macOS.app.tar.gz                           (Apple Silicon)
   Shum-Windows-x64-setup.exe, Shum-Windows-arm64-setup.exe
-  Shum-Linux-x64.AppImage, Shum-Linux-arm64.AppImage
 latest.json goes into the same folder and is uploaded with the release; the
 apps fetch it from the latest release on GitHub.
 """
@@ -19,11 +18,8 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PLATFORMS = {
     "darwin-aarch64": "Shum-macOS.app.tar.gz",
-    "darwin-x86_64": "Shum-macOS.app.tar.gz",
     "windows-x86_64": "Shum-Windows-x64-setup.exe",
     "windows-aarch64": "Shum-Windows-arm64-setup.exe",
-    "linux-x86_64": "Shum-Linux-x64.AppImage",
-    "linux-aarch64": "Shum-Linux-arm64.AppImage",
 }
 
 

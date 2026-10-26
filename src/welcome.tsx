@@ -18,7 +18,7 @@ const STEP_MS = 650;
  * keys. With `onCancel` it is opened from Profiles and starts with the keys;
  * without it this is the first screen of the app.
  */
-export function Welcome(props: { onDone: () => void; onCancel?: () => void; restore?: boolean }) {
+export function Welcome(props: { onDone: () => void; onCancel?: () => void }) {
   const [step, setStep] = useState<Step>(props.onCancel ? "security" : "entry");
   const [name, setName] = useState("");
   const [seed, setSeed] = useState<string | null>(null);
@@ -26,7 +26,7 @@ export function Welcome(props: { onDone: () => void; onCancel?: () => void; rest
   const [attempt, setAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [restoring, setRestoring] = useState(!!props.restore);
+  const [restoring, setRestoring] = useState(false);
 
   // Prepared keys live only until the profile is created or the flow ends.
   useEffect(() => () => void shell("forget_keys").catch(() => {}), []);

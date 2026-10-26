@@ -5,7 +5,7 @@ import { AddContact, ContactCard, ContactList } from "./contacts";
 import { ProfileNav, ProfilePage, type Section } from "./profile";
 import { PresenceBadge, PresencePixels } from "./presence";
 import { Avatar, Chip, Confirm, ReactionArt } from "./ui";
-import { Welcome } from "./welcome";
+import { Restore, Welcome } from "./welcome";
 import {
   bluetoothStatus,
   call,
@@ -226,14 +226,10 @@ export default function App() {
     setTab("chats");
     refresh();
   };
-  if (onboarding || (!snapshot && noProfile)) {
+  if (onboarding === "create" || (!snapshot && noProfile)) {
     return (
       <div className="app">
-        <Welcome
-          onDone={restart}
-          onCancel={onboarding ? () => setOnboarding(null) : undefined}
-          restore={onboarding === "restore"}
-        />
+        <Welcome onDone={restart} onCancel={onboarding ? () => setOnboarding(null) : undefined} />
       </div>
     );
   }
@@ -397,6 +393,9 @@ export default function App() {
         <UpdateBanner />
       </main>
       {adding && <AddContact act={act} onClose={() => setAdding(false)} />}
+      {onboarding === "restore" && (
+        <Restore onClose={() => setOnboarding(null)} onDone={restart} />
+      )}
     </div>
   );
 }

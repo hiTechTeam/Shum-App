@@ -2,7 +2,7 @@
 
 [English](README.md) · Русский
 
-Shum для компьютера: чаты, контакты и люди рядом по Bluetooth. Превью 0.1.1 для macOS 15 и новее (Apple Silicon и Intel), Windows 10 и 11 (x64, ARM64) и Linux (x64, ARM64).
+Shum для компьютера: чаты, контакты и люди рядом по Bluetooth. Превью 0.1.1 для macOS 15 и новее на Apple Silicon, Windows 10 и 11 (x64, ARM64). На Linux используйте [Shum CLI](https://github.com/hiTechTeam/Shum-CLI).
 
 Интерфейс на React (`src`), оболочка на Tauri (`src-tauri`). Вся логика сообщений в [Shum-Core](https://github.com/hiTechTeam/Shum-Core), приложение её только показывает.
 
@@ -12,7 +12,6 @@ Shum для компьютера: чаты, контакты и люди ряд�
 
 * **macOS:** `Shum-macOS.dmg`, перенесите Shum в «Программы». Он подписан самоподписанным сертификатом и не заверен Apple: при первом запуске откройте «Системные настройки» → «Конфиденциальность и безопасность» и нажмите «Всё равно открыть».
 * **Windows:** `Shum-Windows-x64-setup.exe` или `-arm64-setup.exe`. Установщик не подписан: если Windows напишет, что защитила компьютер, нажмите «Подробнее» → «Выполнить в любом случае». Права администратора не нужны.
-* **Linux:** `sudo apt install ./Shum-Linux-x64.deb` на Debian и Ubuntu или `chmod +x Shum-Linux-x64.AppImage` и запуск на любом дистрибутиве. Файлы для ARM64 рядом.
 
 ## Вместе с CLI
 
@@ -32,7 +31,6 @@ npm run tauri dev
 ```sh
 sh scripts/package_macos.sh    # DMG, универсальный
 sh scripts/package_windows.sh  # установщики NSIS, сборка через cargo-xwin
-sh scripts/package_linux.sh    # .deb и AppImage в Docker
 ```
 
 ## Лицензия
