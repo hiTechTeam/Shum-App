@@ -1,6 +1,6 @@
 // Contacts: the list with blocked people apart, and one contact's card.
 import { useMemo, useState } from "react";
-import { fingerprint, shortID, type Card, type Request, type Snapshot } from "./core";
+import { call, describe, fingerprint, shortID, type Card, type Request, type Snapshot } from "./core";
 import { IconPanel, IconPlus, IconSearch } from "./icons";
 import { Avatar, Confirm, CopyRow, Modal } from "./ui";
 
@@ -149,36 +149,90 @@ export function ContactCard(props: {
  * invites them. Over the internet a person is found only by network ID:
  * relays deliver to it, while a Shum ID is a fingerprint of the keys.
  */
-export function AddContact(props: { act: (request: Request) => Promise<void>; onClose: () => void }) {
+type Found = { card: Card; link: string; contactID: string };
+
+export function AddContact(props: { contacts: string[]; act: (request: Request) => Promise<void>; onClose: () => void }) {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
+  const [found, setFound] = useState<Found | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const text = value.trim();
   const link = /^shum:\/\//i.test(text) || text.includes("/");
   const known = !link && text.length >= 8 && text.length < 64;
+  const added = found ? props.contacts.includes(found.contactID) : false;
+  // Nothing is added until the person is seen: a network ID waits for them to answer.
+  const search = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      setFound(await call<Found>({ command: "find", contact: text }));
+    } catch (e) {
+      setError(describe(e));
+    }
+    setBusy(false);
+  };
+  const add = async (invite: boolean) => {
+    if (!found) return;
+    setBusy(true);
+    await props.act({ command: "add", link: found.link });
+    if (invite) await props.act({ command: "invite", contact: found.contactID });
+    setBusy(false);
+    props.onClose();
+  };
   return (
     <Modal title="Добавить контакт" onClose={props.onClose}>
-      <label className="field-label">Ссылка или сетевой ID</label>
-      <div className="field-row">
-        <input className="field" autoFocus placeholder="shum://… или 64 символа" value={value} onChange={(e) => setValue(e.target.value)} />
-        <button
-          className="button primary"
-          disabled={!text || busy}
-          onClick={async () => {
-            setBusy(true);
-            // A link only adds the card; a network ID finds the person and invites them.
-            await props.act(link ? { command: "add", link: text } : { command: "invite", contact: text });
-            setBusy(false);
-            props.onClose();
-          }}
-        >
-          {busy ? "Ищу…" : "Добавить"}
-        </button>
-      </div>
-      <p className="muted small">
-        {known
-          ? "Короткий ID подходит только для тех, кто уже есть в контактах или рядом."
-          : "Сетевой ID есть у собеседника в разделе «Профиль → Мой профиль». Shum ID для поиска не подходит. Человек должен быть в сети: если он не ответит за 20 секунд, попросите ссылку или QR-код."}
-      </p>
+      {found ? (
+        <div className="found">
+          <Avatar card={found.card} id={found.contactID} size={72} />
+          <h2>{found.card.name}</h2>
+          {found.card.bio && <p className="muted">{found.card.bio}</p>}
+          <p className="muted small">Shum ID: {shortID(found.contactID)}</p>
+          {added ? (
+            <>
+              <p className="muted small">Уже в ваших контактах.</p>
+              <div className="actions">
+                <button className="button primary" onClick={props.onClose}>
+                  Готово
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="actions">
+              <button className="button" disabled={busy} onClick={() => add(false)}>
+                Только добавить
+              </button>
+              <button className="button primary" disabled={busy} onClick={() => add(true)}>
+                Пригласить в чат
+              </button>
+            </div>
+          )}
+          <button className="link-button muted" onClick={() => setFound(null)}>
+            Искать другого
+          </button>
+        </div>
+      ) : (
+        <>
+          <label className="field-label">Ссылка или сетевой ID</label>
+          <form
+            className="field-row"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (text && !busy) search();
+            }}
+          >
+            <input className="field" autoFocus placeholder="shum://… или 64 символа" value={value} onChange={(e) => setValue(e.target.value)} />
+            <button className="button primary" disabled={!text || busy}>
+              {busy ? "Ищу…" : "Найти"}
+            </button>
+          </form>
+          {error && <p className="danger-text small">{error}</p>}
+          <p className="muted small">
+            {known
+              ? "Короткий Shum ID для поиска не подходит: нужна ссылка или сетевой ID из 64 символов."
+              : "Сетевой ID есть у собеседника в разделе «Профиль → Мой профиль». Shum ID для поиска не подходит. Человек должен быть в сети: если он не ответит за 20 секунд, попросите ссылку или QR-код."}
+          </p>
+        </>
+      )}
     </Modal>
   );
 }

@@ -64,6 +64,7 @@ export type Request =
   | { command: "accept"; contact: string }
   | { command: "decline"; contact: string }
   | { command: "cancel_invitation"; contact: string }
+  | { command: "find"; contact: string }
   | { command: "invite"; contact: string }
   | { command: "reaction"; message: string; reaction: ReactionKind }
   | { command: "add"; link: string }

@@ -397,7 +397,7 @@ export default function App() {
         )}
         <UpdateBanner />
       </main>
-      {adding && <AddContact act={act} onClose={() => setAdding(false)} />}
+      {adding && <AddContact contacts={snapshot.contacts.map((c) => c.id)} act={act} onClose={() => setAdding(false)} />}
       {onboarding === "restore" && (
         <Restore onClose={() => setOnboarding(null)} onDone={restart} />
       )}

@@ -193,6 +193,8 @@ input { font: inherit; color: inherit; }
 .field-row { display: flex; gap: 8px; }
 .field-row .field { flex: 1; }
 .field-row .button { flex: none; padding: 0 16px; }
+.found { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.found h2 { margin-top: 6px; }
 
 /* Dialogs and menus */
 .backdrop { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: #000a; }
