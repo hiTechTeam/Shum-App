@@ -16,6 +16,10 @@ export type Contact = {
   distance?: number | null;
   typing: boolean;
   online: boolean;
+  /** No relay or nearby device has this profile's invitation yet. */
+  invitationWaiting?: boolean;
+  /** The invitation was never even tried, so it can still be taken back. */
+  invitationCancellable?: boolean;
 };
 
 export type Message = {
@@ -59,6 +63,7 @@ export type Request =
   | { command: "presence"; contact: string; online: boolean }
   | { command: "accept"; contact: string }
   | { command: "decline"; contact: string }
+  | { command: "cancel_invitation"; contact: string }
   | { command: "invite"; contact: string }
   | { command: "reaction"; message: string; reaction: ReactionKind }
   | { command: "add"; link: string }

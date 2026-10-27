@@ -83,7 +83,7 @@ function contactStatus(contact: Contact) {
     case "incomingPending":
       return "приглашение в чат";
     case "outgoingPending":
-      return "приглашение отправлено";
+      return contact.invitationWaiting ? "приглашение ждёт связи" : "приглашение отправлено";
     case "declinedByPeer":
     case "declinedLocally":
       return "приглашение отклонено";
@@ -166,7 +166,12 @@ export default function App() {
         if (last && (!lastEvent || last.timestamp >= lastEvent.timestamp)) {
           summary = { text: last.text, timestamp: last.timestamp, outgoing: last.outgoing, status: last.status };
         } else if (lastEvent) {
-          const text = contact.phase === "incomingPending" ? "Приглашение в чат" : eventLabels[lastEvent.kind] ?? "";
+          const text =
+            contact.phase === "incomingPending"
+              ? "Приглашение в чат"
+              : contact.phase === "outgoingPending" && contact.invitationWaiting
+                ? "Приглашение ждёт связи"
+                : eventLabels[lastEvent.kind] ?? "";
           summary = { text, timestamp: lastEvent.timestamp, outgoing: false, status: "" };
         }
         const badge = contact.unread || (contact.phase === "incomingPending" ? 1 : 0);
@@ -522,7 +527,9 @@ function Conversation(props: {
       : contact.phase === "incomingPending"
         ? "Ответьте на приглашение, чтобы писать"
         : contact.phase === "outgoingPending"
-          ? "Дождитесь ответа на приглашение"
+          ? contact.invitationWaiting
+            ? "Приглашение уйдёт, когда появится связь"
+            : "Дождитесь ответа на приглашение"
           : contact.phase === "declinedLocally"
             ? "Примите приглашение, если передумали"
             : contact.phase === "declinedByPeer"
@@ -632,6 +639,22 @@ function Conversation(props: {
               );
             }
             if (item.kind === "event") {
+              // Still on this device: it leaves by itself once there is a connection.
+              if (item.event.kind === "invitationSent" && contact.phase === "outgoingPending" && contact.invitationWaiting) {
+                return (
+                  <p key={item.event.id} className="note">
+                    Приглашение ждёт связи и уйдёт само, когда появится интернет. {clock(item.event.timestamp)}
+                    {contact.invitationCancellable && (
+                      <>
+                        {" "}
+                        <button className="link-button" onClick={() => act({ command: "cancel_invitation", contact: contact.id })}>
+                          Отменить
+                        </button>
+                      </>
+                    )}
+                  </p>
+                );
+              }
               return (
                 <p key={item.event.id} className="note">
                   {eventLabels[item.event.kind] ?? "Чат доступен."} {clock(item.event.timestamp)}
