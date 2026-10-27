@@ -52,7 +52,7 @@ function chime() {
 }
 
 const iconLink = () => document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-const plainIcon = typeof document !== "undefined" ? iconLink()?.href ?? "/icon.png" : "";
+const plainIcon = typeof document !== "undefined" ? iconLink()?.href ?? "/favicon.svg" : "";
 let iconImage: HTMLImageElement | null = null;
 
 /** The tab icon with a red count in its corner, or the plain icon at zero. */
