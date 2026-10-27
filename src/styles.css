@@ -118,7 +118,7 @@ input { font: inherit; color: inherit; }
 .send:disabled { background: var(--field); color: var(--muted); cursor: default; }
 
 .empty { position: relative; flex: 1; display: grid; place-items: center; color: var(--muted); }
-.floating { position: absolute; top: 14px; left: 16px; }
+.floating { position: absolute; top: 14px; left: 16px; z-index: 2; }
 
 /* Pixel avatar from Shum-Core, scaled without smoothing. */
 .avatar { overflow: hidden; }
