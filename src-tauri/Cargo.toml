@@ -1,6 +1,6 @@
 [package]
 name = "shum-app"
-version = "0.1.11"
+version = "0.1.12"
 edition = "2021"
 license = "MIT"
 publish = false
@@ -17,9 +17,9 @@ base64 = "0.22"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 directories = "6"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
-shum-core = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "c7b0f6f4c54ba33e62d002c3d23b08009e8b31c5" }
-shum-store = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "c7b0f6f4c54ba33e62d002c3d23b08009e8b31c5" }
-shum-session = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "c7b0f6f4c54ba33e62d002c3d23b08009e8b31c5" }
+shum-core = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "f0853c76ef4f6a13c53af3f12dfdf3481f94991d" }
+shum-store = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "f0853c76ef4f6a13c53af3f12dfdf3481f94991d" }
+shum-session = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "f0853c76ef4f6a13c53af3f12dfdf3481f94991d" }
 # System TLS (SChannel, Security, OpenSSL): rustls would rebuild ring, which does not cross-build for Windows ARM64.
 tauri-plugin-updater = { version = "2", default-features = false, features = ["native-tls", "system-proxy", "zip"] }
 
