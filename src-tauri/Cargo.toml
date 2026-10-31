@@ -17,9 +17,9 @@ base64 = "0.22"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 directories = "6"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
-shum-core = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "d6c9a3ec98d605bd2a0b5f617d2000352ab05bae" }
-shum-store = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "d6c9a3ec98d605bd2a0b5f617d2000352ab05bae" }
-shum-session = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "d6c9a3ec98d605bd2a0b5f617d2000352ab05bae" }
+shum-core = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "29ac53b2581e76de1d96afade0a79ebc5b097a88" }
+shum-store = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "29ac53b2581e76de1d96afade0a79ebc5b097a88" }
+shum-session = { git = "https://github.com/hiTechTeam/Shum-Core.git", rev = "29ac53b2581e76de1d96afade0a79ebc5b097a88" }
 # System TLS (SChannel, Security, OpenSSL): rustls would rebuild ring, which does not cross-build for Windows ARM64.
 tauri-plugin-updater = { version = "2", default-features = false, features = ["native-tls", "system-proxy", "zip"] }
 
