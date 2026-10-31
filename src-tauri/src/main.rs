@@ -49,6 +49,8 @@ fn main() {
             commands::request,
             commands::avatar,
             commands::reaction,
+            commands::sticker_set,
+            commands::sticker_sets,
             commands::presence_pattern,
             commands::new_avatar_seed,
             commands::set_avatar,

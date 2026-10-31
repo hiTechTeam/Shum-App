@@ -1,6 +1,6 @@
 // Building blocks shared by every screen.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { avatarPixels, reactionPixels, type Card, type ReactionKind } from "./core";
+import { avatarPixels, reactionPixels, stickerSetPixels, type Card } from "./core";
 
 export function Chip(props: { active: boolean; label: string; count: number; onClick: () => void }) {
   return (
@@ -10,28 +10,31 @@ export function Chip(props: { active: boolean; label: string; count: number; onC
   );
 }
 
-/** A reaction picture from Shum-Core. */
-export function ReactionArt(props: { kind: ReactionKind; size: number }) {
+/** A sticker or reaction picture from Shum-Core, crisp at any size. */
+export function ReactionArt(props: { kind: string; size: number; set?: boolean; title?: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const [drawn, setDrawn] = useState(false);
+  const [side, setSide] = useState(0);
 
   useEffect(() => {
-    const pixels = reactionPixels(props.kind);
+    const pixels = props.set ? stickerSetPixels(props.kind) : reactionPixels(props.kind);
     let alive = true;
     pixels.then((data) => {
-      const context = canvas.current?.getContext("2d");
-      if (!alive || !context) return;
-      context.putImageData(new ImageData(data, 12, 12), 0, 0);
-      setDrawn(true);
+      const size = Math.round(Math.sqrt(data.length / 4));
+      const element = canvas.current;
+      if (!alive || !element || size === 0) return;
+      element.width = size;
+      element.height = size;
+      element.getContext("2d")?.putImageData(new ImageData(data, size, size), 0, 0);
+      setSide(size);
     });
     return () => {
       alive = false;
     };
-  }, [props.kind]);
+  }, [props.kind, props.set]);
 
   return (
-    <span className="reaction-art" style={{ width: props.size, height: props.size }}>
-      <canvas ref={canvas} width={12} height={12} hidden={!drawn} />
+    <span className="reaction-art" title={props.title} style={{ width: props.size, height: props.size }}>
+      <canvas ref={canvas} hidden={side === 0} />
     </span>
   );
 }

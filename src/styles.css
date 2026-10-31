@@ -265,3 +265,32 @@ input { font: inherit; color: inherit; }
 .status { display: inline-flex; align-items: center; gap: 4px; }
 .avatar-wrap { position: relative; flex: none; display: inline-block; line-height: 0; }
 .presence-badge { position: absolute; right: -2px; bottom: -1px; padding: 2.5px 3.5px; border-radius: 4px; background: rgba(0,0,0,0.45); box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.18); line-height: 0; }
+
+/* Stickers, photos, the full reaction picker and deleting. */
+.sticker { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.message.in .sticker { align-items: flex-start; }
+.sticker time { font-size: 11px; color: var(--muted); }
+.bubble.with-photo { flex-direction: column; align-items: stretch; padding: 0 0 6px; overflow: hidden; }
+.bubble.with-photo span { padding: 0 12px; }
+.bubble.with-photo time { align-self: flex-end; padding: 0 12px; }
+.photo { display: grid; place-items: center; background: var(--field); color: var(--muted); font-size: 13px; }
+.photo img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; }
+.picker { flex-direction: column; }
+.picker-row { display: flex; gap: 2px; max-width: 420px; overflow-x: auto; }
+.picker .more { flex: none; color: var(--muted); font-size: 16px; }
+.picker.all { width: 420px; }
+.picker-sets { max-height: 320px; overflow-y: auto; margin-top: 6px; }
+.picker-sets h4 { margin: 8px 4px 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--muted); }
+.picker-grid { display: grid; grid-template-columns: repeat(10, 36px); gap: 2px; }
+.picker.choices { min-width: 240px; }
+.picker.choices button { width: auto; height: 36px; padding: 0 12px; text-align: left; font-size: 14px; }
+.picker.choices .danger { color: #ff453a; }
+.sticker-panel { margin-bottom: 10px; padding: 8px 10px 10px; border-radius: 18px; background: #232325; border: 1px solid var(--line); }
+.sticker-tabs { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 6px; }
+.sticker-tabs button { flex: none; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; }
+.sticker-tabs button.active, .sticker-tabs button:hover { background: var(--hover); }
+.sticker-head { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 6px 8px; font-size: 14px; }
+.sticker-head span { color: var(--muted); font-size: 13px; }
+.sticker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; max-height: 260px; overflow-y: auto; }
+.sticker-grid button { height: 84px; border-radius: 12px; display: grid; place-items: center; }
+.sticker-grid button:hover { background: var(--hover); }

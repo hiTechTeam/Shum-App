@@ -14,9 +14,11 @@ import {
   shell,
   distanceLabel,
   eventLabels,
-  reactionKinds,
-  reactionNames,
+  quickReactions,
+  reactionUsed,
+  stickerSets,
   type Contact,
+  type StickerSet,
   type Message,
   type ReactionKind,
   type Request,
@@ -32,7 +34,9 @@ import {
   IconMore,
   IconPanel,
   IconSearch,
+  IconPhoto,
   IconSmile,
+  IconTrash,
   DeliveryMark,
 } from "./icons";
 
@@ -440,6 +444,45 @@ function Conversation(props: {
   const [find, setFind] = useState("");
   const [menu, setMenu] = useState(false);
   const [confirm, setConfirm] = useState<"clear" | "block" | null>(null);
+  /** Every reaction by its set in the picker, beyond the twenty at hand. */
+  const [allReactions, setAllReactions] = useState(false);
+  /** An own message asking where to delete it. */
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [stickersOpen, setStickersOpen] = useState(false);
+  const [sets, setSets] = useState<StickerSet[]>([]);
+  const photoInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    stickerSets().then(setSets).catch(() => {});
+  }, []);
+  /** A sticker's emoji and word, for titles and names. */
+  const words = useMemo(
+    () => new Map(sets.flatMap((set) => set.kinds.map((k) => [k.id, `${k.emoji} ${k.word}`] as const))),
+    [sets],
+  );
+  const react = (message: string, kind: string) => {
+    setPicker(null);
+    setAllReactions(false);
+    reactionUsed(kind);
+    act({ command: "reaction", message, reaction: kind });
+  };
+  const attachPhoto = async (file: File) => {
+    try {
+      const photo = await preparePhoto(file);
+      const caption = draftRef.current.trim();
+      setDraft("");
+      await act({
+        command: "send_photo",
+        contact: contact.id,
+        photo: photo.base64,
+        width: photo.width,
+        height: photo.height,
+        text: caption || "Фото",
+        caption: caption.length > 0,
+      });
+    } catch {
+      // The request's own failure shows; an unreadable file just stays out.
+    }
+  };
   const end = useRef<HTMLDivElement>(null);
   const writable = contact.phase === "accepted";
   const typedAt = useRef(0);
@@ -625,7 +668,15 @@ function Conversation(props: {
         />
       )}
 
-      <div className="messages" onClick={() => setPicker(null)}>
+      <div
+        className="messages"
+        onClick={() => {
+          setPicker(null);
+          setAllReactions(false);
+          setDeleting(null);
+          setStickersOpen(false);
+        }}
+      >
         <div className="column">
           <span className="pill">
             <IconLock /> Сквозное шифрование
@@ -669,13 +720,58 @@ function Conversation(props: {
             return (
               <div key={m.id} className={`message ${m.outgoing ? "out" : "in"}${last ? " last" : ""}`}>
                 <div className="bubble-line">
-                  <div className="bubble">
-                    <span>{m.text}</span>
-                    <time>
-                      {clock(m.timestamp)}
-                      {m.outgoing && !failed && <DeliveryMark status={m.status} />}
-                    </time>
-                  </div>
+                  {m.sticker ? (
+                    <div className="sticker" title={m.text}>
+                      <ReactionArt kind={m.sticker} size={140} />
+                      <time>
+                        {clock(m.timestamp)}
+                        {m.outgoing && !failed && <DeliveryMark status={m.status} />}
+                      </time>
+                    </div>
+                  ) : (
+                    <div className={m.photo ? "bubble with-photo" : "bubble"}>
+                      {m.photo && <PhotoView message={m} />}
+                      {(!m.photo || m.photo.caption) && <span>{m.text}</span>}
+                      <time>
+                        {clock(m.timestamp)}
+                        {m.outgoing && !failed && <DeliveryMark status={m.status} />}
+                      </time>
+                    </div>
+                  )}
+                  {m.outgoing && (
+                    <button
+                      className="react-button"
+                      title="Удалить"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleting(deleting === m.id ? null : m.id);
+                      }}
+                    >
+                      <IconTrash />
+                    </button>
+                  )}
+                  {deleting === m.id && (
+                    <div className="picker choices" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className="danger"
+                        onClick={() => {
+                          setDeleting(null);
+                          act({ command: "delete", message: m.id, everyone: true });
+                        }}
+                      >
+                        Удалить у меня и у {contact.card.name}
+                      </button>
+                      <button
+                        className="danger"
+                        onClick={() => {
+                          setDeleting(null);
+                          act({ command: "delete", message: m.id, everyone: false });
+                        }}
+                      >
+                        Удалить у меня
+                      </button>
+                    </div>
+                  )}
                   {writable && (
                     <button
                       className="react-button"
@@ -689,19 +785,35 @@ function Conversation(props: {
                     </button>
                   )}
                   {picker === m.id && (
-                    <div className="picker" onClick={(e) => e.stopPropagation()}>
-                      {reactionKinds.map((kind) => (
-                        <button
-                          key={kind}
-                          title={reactionNames[kind]}
-                          onClick={() => {
-                            setPicker(null);
-                            act({ command: "reaction", message: m.id, reaction: kind });
-                          }}
-                        >
-                          <ReactionArt kind={kind} size={28} />
+                    <div className={allReactions ? "picker all" : "picker"} onClick={(e) => e.stopPropagation()}>
+                      <div className="picker-row">
+                        {quickReactions().map((kind) => (
+                          <button key={kind} title={words.get(kind)} onClick={() => react(m.id, kind)}>
+                            <ReactionArt kind={kind} size={26} />
+                          </button>
+                        ))}
+                        <button className="more" title="Все реакции" onClick={() => setAllReactions(!allReactions)}>
+                          {allReactions ? "▴" : "▾"}
                         </button>
-                      ))}
+                      </div>
+                      {allReactions && (
+                        <div className="picker-sets">
+                          {sets
+                            .filter((set) => set.reactions)
+                            .map((set) => (
+                              <section key={set.section}>
+                                <h4>{set.title}</h4>
+                                <div className="picker-grid">
+                                  {set.kinds.map((k) => (
+                                    <button key={k.id} title={`${k.emoji} ${k.word}`} onClick={() => react(m.id, k.id)}>
+                                      <ReactionArt kind={k.id} size={26} />
+                                    </button>
+                                  ))}
+                                </div>
+                              </section>
+                            ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -709,7 +821,7 @@ function Conversation(props: {
                 {marks && (
                   <div className="reactions">
                     {marks.map((mark) => (
-                      <span key={mark.kind} className="reaction" title={reactionNames[mark.kind]}>
+                      <span key={mark.kind} className="reaction" title={words.get(mark.kind)}>
                         <ReactionArt kind={mark.kind} size={16} /> {mark.names.join(", ")}
                       </span>
                     ))}
@@ -766,7 +878,29 @@ function Conversation(props: {
       </div>
 
       <footer className="composer">
+        {stickersOpen && writable && (
+          <StickerPanel
+            sets={sets}
+            onSend={(sticker) => {
+              act({ command: "send_sticker", contact: contact.id, sticker });
+            }}
+          />
+        )}
         <div className="column composer-row">
+          <input
+            ref={photoInput}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) attachPhoto(file);
+            }}
+          />
+          <button className="icon-button" disabled={!writable} title="Фото" onClick={() => photoInput.current?.click()}>
+            <IconPhoto />
+          </button>
           <textarea
             ref={field}
             rows={1}
@@ -790,6 +924,14 @@ function Conversation(props: {
               }
             }}
           />
+          <button
+            className={stickersOpen ? "icon-button accent" : "icon-button"}
+            disabled={!writable}
+            title="Стикеры"
+            onClick={() => setStickersOpen(!stickersOpen)}
+          >
+            <IconSmile />
+          </button>
           <button className="send" disabled={!writable || !draft.trim()} onClick={submit} title="Отправить">
             <IconArrow />
           </button>
@@ -797,6 +939,93 @@ function Conversation(props: {
       </footer>
     </>
   );
+}
+
+/** A message's photo: read from Shum-Core once every part is here. */
+function PhotoView(props: { message: Message }) {
+  const { message } = props;
+  const photo = message.photo!;
+  const [source, setSource] = useState<string | null>(null);
+  useEffect(() => {
+    if (photo.state !== "ready") return;
+    let alive = true;
+    call<{ photo: string }>({ command: "photo", message: message.id })
+      .then((answer) => alive && setSource(`data:image/jpeg;base64,${answer.photo}`))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [message.id, photo.state]);
+  const width = 260;
+  const height = Math.round(Math.min(Math.max((width * photo.height) / Math.max(photo.width, 1), width * 0.5), width * 1.35));
+  return (
+    <div className="photo" style={{ width, height }}>
+      {source ? (
+        <img src={source} alt="Фото" onClick={() => window.open(source, "_blank")} />
+      ) : (
+        <span>{photo.state === "missing" ? "Фото не дошло" : "Фото загружается"}</span>
+      )}
+    </div>
+  );
+}
+
+/** Shum's stickers above the field: the sets on top, the chosen set below. */
+function StickerPanel(props: { sets: StickerSet[]; onSend: (sticker: string) => void }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const set = props.sets.find((s) => s.section === selected) ?? props.sets[0];
+  if (!set) return null;
+  return (
+    <div className="column sticker-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="sticker-tabs">
+        {props.sets.map((s) => (
+          <button key={s.section} className={s === set ? "active" : ""} title={s.title} onClick={() => setSelected(s.section)}>
+            <ReactionArt kind={s.section} set size={30} />
+          </button>
+        ))}
+      </div>
+      <div className="sticker-head">
+        <strong>{set.title}</strong>
+        <span>Стикеров: {set.kinds.length}</span>
+      </div>
+      <div className="sticker-grid">
+        {set.kinds.map((k) => (
+          <button key={k.id} title={`${k.emoji} ${k.word}`} onClick={() => props.onSend(k.id)}>
+            <ReactionArt kind={k.id} size={72} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** A picked picture made what a message carries: at most 1280 pixels on the
+ * long side, about 100 KB of JPEG, pixels only. */
+async function preparePhoto(file: File): Promise<{ base64: string; width: number; height: number }> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  let side = 1280;
+  while (side >= 320) {
+    const scale = Math.min(1, side / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d")!;
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(bitmap, 0, 0, width, height);
+    for (const quality of [0.8, 0.7, 0.6, 0.5, 0.42]) {
+      const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, "image/jpeg", quality));
+      if (blob && blob.size <= 110_000) {
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        let binary = "";
+        for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        return { base64: btoa(binary), width, height };
+      }
+    }
+    side = Math.round(side * 0.8);
+  }
+  throw new Error("photo too large");
 }
 
 /** Whether the window is shown: not minimized or behind another space. */

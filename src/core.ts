@@ -29,11 +29,16 @@ export type Message = {
   text: string;
   outgoing: boolean;
   status: "delivered" | "read" | "queued" | "forwarding" | "expired" | "cancelled";
+  /** A photo whose bytes come with `photo` once every part is here. */
+  photo?: { width: number; height: number; size: number; caption: boolean; state: "ready" | "loading" | "missing" } | null;
+  /** A sticker of Shum's sets in place of the text. */
+  sticker?: string | null;
 };
 
 export type TimelineEvent = { id: string; contactID: string; timestamp: number; kind: string };
 
-export type ReactionKind = "heart" | "like" | "dislike" | "laugh" | "fire" | "coffin" | "hundred" | "horror";
+/** The name of a sticker from Shum's sets that are reactions too. */
+export type ReactionKind = string;
 
 export type Reaction = { messageID: string; personID: string; mark: { reaction?: ReactionKind | null } };
 
@@ -67,6 +72,10 @@ export type Request =
   | { command: "find"; contact: string }
   | { command: "invite"; contact: string }
   | { command: "reaction"; message: string; reaction: ReactionKind }
+  | { command: "send_sticker"; contact: string; sticker: string }
+  | { command: "send_photo"; contact: string; photo: string; width: number; height: number; text: string; caption: boolean }
+  | { command: "photo"; message: string }
+  | { command: "delete"; message: string; everyone: boolean }
   | { command: "add"; link: string }
   | { command: "clear"; contact: string }
   | { command: "block"; contact: string; blocked: boolean }
@@ -109,16 +118,39 @@ export function avatarPixels(seed: string): Promise<Uint8ClampedArray<ArrayBuffe
   return pixels;
 }
 
-const reactionPictures = new Map<ReactionKind, Promise<Uint8ClampedArray<ArrayBuffer>>>();
+const stickerPictures = new Map<string, Promise<Uint8ClampedArray<ArrayBuffer>>>();
 
-/** 12x12 RGBA pixels of a reaction, drawn by Shum-Core. */
-export function reactionPixels(kind: ReactionKind): Promise<Uint8ClampedArray<ArrayBuffer>> {
-  let pixels = reactionPictures.get(kind);
+/** RGBA pixels of a sticker or reaction from Shum's sets, drawn by Shum-Core:
+ * emoji 16x16, characters 32x32. */
+export function reactionPixels(kind: string): Promise<Uint8ClampedArray<ArrayBuffer>> {
+  let pixels = stickerPictures.get(kind);
   if (!pixels) {
     pixels = shell<number[]>("reaction", { kind }).then((bytes) => new Uint8ClampedArray(bytes));
-    reactionPictures.set(kind, pixels);
+    stickerPictures.set(kind, pixels);
   }
   return pixels;
+}
+
+/** A set's picture for the row of sets. */
+export function stickerSetPixels(set: string): Promise<Uint8ClampedArray<ArrayBuffer>> {
+  const key = `set:${set}`;
+  let pixels = stickerPictures.get(key);
+  if (!pixels) {
+    pixels = shell<number[]>("sticker_set", { set }).then((bytes) => new Uint8ClampedArray(bytes));
+    stickerPictures.set(key, pixels);
+  }
+  return pixels;
+}
+
+export type Sticker = { id: string; emoji: string; word: string };
+export type StickerSet = { section: string; title: string; reactions: boolean; kinds: Sticker[] };
+
+let sets: Promise<StickerSet[]> | null = null;
+
+/** Shum's sticker sets from Shum-Core, reactions first. */
+export function stickerSets(): Promise<StickerSet[]> {
+  sets ??= shell<string>("sticker_sets").then((json) => JSON.parse(json) as StickerSet[]);
+  return sets;
 }
 
 const phaseHints: Record<string, string> = {
@@ -138,19 +170,31 @@ export function describe(error: unknown): string {
   return String(error);
 }
 
-/** Picker order, as in the CLI and iOS. */
-export const reactionKinds: ReactionKind[] = ["heart", "like", "dislike", "laugh", "fire", "coffin", "hundred", "horror"];
+/** The twenty first at hand when reacting: this device's most chosen, then
+ * the basic ones, as on iPhone. All of them are under "more". */
+const basicReactions = ["heart", "like", "dislike", "laugh", "fire", "coffin", "hundred", "horror",
+  "adore", "wow", "sad", "angry", "hmm", "party", "cool", "eyes", "clap", "wave", "ok", "peace"];
 
-export const reactionNames: Record<ReactionKind, string> = {
-  heart: "Сердце",
-  like: "Нравится",
-  dislike: "Не нравится",
-  laugh: "Смешно",
-  fire: "Огонь",
-  coffin: "Гроб",
-  hundred: "100",
-  horror: "Кошмар",
-};
+export function quickReactions(): ReactionKind[] {
+  let counts: Record<string, number> = {};
+  try {
+    counts = JSON.parse(localStorage.getItem("shum.reactions.counts") ?? "{}");
+  } catch {
+    counts = {};
+  }
+  const used = Object.keys(counts).sort((a, b) => (counts[b] ?? 0) - (counts[a] ?? 0));
+  return [...new Set([...used, ...basicReactions])].slice(0, 20);
+}
+
+export function reactionUsed(kind: ReactionKind) {
+  try {
+    const counts = JSON.parse(localStorage.getItem("shum.reactions.counts") ?? "{}");
+    counts[kind] = (counts[kind] ?? 0) + 1;
+    localStorage.setItem("shum.reactions.counts", JSON.stringify(counts));
+  } catch {
+    // Without storage the basic ones stay first.
+  }
+}
 
 export const eventLabels: Record<string, string> = {
   invitationSent: "Приглашение отправлено. Дождитесь ответа.",

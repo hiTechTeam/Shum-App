@@ -9,7 +9,9 @@ import {
   defaultRelays,
   newAvatarSeed,
   presencePattern,
-  reactionPixels,
+  stickerPixels,
+  stickerSetPixels,
+  stickerSets,
   validateName,
 } from "./core/shum_web.js";
 import { BrowserSession } from "./session";
@@ -187,7 +189,11 @@ export async function browserShell<T>(command: string, args: Record<string, unkn
     case "avatar":
       return Array.from(avatarPixels(String(args.seed))) as T;
     case "reaction":
-      return Array.from(reactionPixels(String(args.kind))) as T;
+      return Array.from(stickerPixels(String(args.kind))) as T;
+    case "sticker_set":
+      return Array.from(stickerSetPixels(String(args.set))) as T;
+    case "sticker_sets":
+      return stickerSets() as T;
     case "presence_pattern":
       return Array.from(presencePattern(String(args.seed)), Boolean) as T;
     default:

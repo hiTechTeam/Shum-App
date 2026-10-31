@@ -49,13 +49,29 @@ pub fn avatar(seed: String) -> Result<Vec<u8>, Failure> {
         .collect())
 }
 
-/// The 12x12 RGBA picture of a reaction.
+/// A sticker's or reaction's picture from Shum's sets as RGBA bytes; its
+/// side is the square root of a quarter of the length.
 #[tauri::command]
-pub fn reaction(kind: shum_core::packet::ReactionKind) -> Vec<u8> {
-    shum_core::reaction_art::pixels(kind)
-        .into_iter()
-        .flatten()
-        .collect()
+pub fn reaction(kind: String) -> Vec<u8> {
+    shum_core::pool::sticker(&kind)
+        .map(|sticker| shum_core::pool::rgba(&sticker.art))
+        .unwrap_or_default()
+}
+
+/// A set's picture for the row of sets, as RGBA bytes.
+#[tauri::command]
+pub fn sticker_set(set: String) -> Vec<u8> {
+    shum_core::stickers::SETS
+        .iter()
+        .find(|s| s.id == set)
+        .map(|s| shum_core::pool::rgba(&s.icon))
+        .unwrap_or_default()
+}
+
+/// Shum's sets as JSON, reactions first.
+#[tauri::command]
+pub fn sticker_sets() -> String {
+    shum_core::pool::sets_json()
 }
 
 /// Which cells of the 3x3 "in chat" mark are lit for a contact.
