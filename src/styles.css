@@ -276,8 +276,17 @@ input { font: inherit; color: inherit; }
 .photo { display: grid; place-items: center; background: var(--field); color: var(--muted); font-size: 13px; }
 .photo img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; }
 .picker { flex-direction: column; }
-.picker-row { display: flex; gap: 2px; max-width: 420px; overflow-x: auto; }
-.picker .more { flex: none; color: var(--muted); font-size: 16px; }
+.picker-top { display: flex; align-items: center; gap: 4px; max-width: 420px; }
+.picker-row { display: flex; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); }
+.picker-row::-webkit-scrollbar { display: none; }
+.picker .more { flex: none; color: var(--text); background: #ffffff1a; border-radius: 50%; }
+.picker .more:hover { background: #ffffff2e; }
+.picker .more svg { transition: transform 0.15s; }
+.picker .more.open svg { transform: rotate(180deg); }
+.photo-viewer { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 48px; background: #000d; cursor: zoom-out; }
+.photo-viewer img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; cursor: default; box-shadow: 0 12px 48px #000a; }
+.photo-close { position: absolute; top: 16px; right: 16px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; color: var(--text); background: #ffffff1f; }
+.photo-close:hover { background: #ffffff33; }
 .picker.all { width: 420px; }
 .picker-sets { max-height: 320px; overflow-y: auto; margin-top: 6px; }
 .picker-sets h4 { margin: 8px 4px 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--muted); }

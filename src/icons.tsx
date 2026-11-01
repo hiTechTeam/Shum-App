@@ -34,6 +34,12 @@ export const IconPhoto = () => (
 export const IconTrash = () => (
   <svg {...svg} width={16} height={16}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
 );
+export const IconChevron = () => (
+  <svg {...svg} width={18} height={18} strokeWidth={2.4}><path d="M6 9l6 6 6-6" /></svg>
+);
+export const IconClose = () => (
+  <svg {...svg} strokeWidth={2.2}><path d="M6 6l12 12M18 6L6 18" /></svg>
+);
 export const IconArrow = () => (
   <svg {...svg} strokeWidth={2.4}><path d="M12 19V5M6 11l6-6 6 6" /></svg>
 );

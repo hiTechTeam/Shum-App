@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAttention } from "./attention";
 import { UpdateBanner } from "./update";
 import { AddContact, ContactCard, ContactList } from "./contacts";
@@ -28,6 +29,8 @@ import {
 import {
   IconArrow,
   IconChats,
+  IconChevron,
+  IconClose,
   IconContacts,
   IconGlobe,
   IconLock,
@@ -789,14 +792,21 @@ function Conversation(props: {
                   )}
                   {picker === m.id && (
                     <div className={allReactions ? "picker all" : "picker"} onClick={(e) => e.stopPropagation()}>
-                      <div className="picker-row">
-                        {quickReactions().map((kind) => (
-                          <button key={kind} title={words.get(kind)} onClick={() => react(m.id, kind)}>
-                            <ReactionArt kind={kind} size={26} />
-                          </button>
-                        ))}
-                        <button className="more" title="Все реакции" onClick={() => setAllReactions(!allReactions)}>
-                          {allReactions ? "▴" : "▾"}
+                      <div className="picker-top">
+                        <div className="picker-row">
+                          {quickReactions().map((kind) => (
+                            <button key={kind} title={words.get(kind)} onClick={() => react(m.id, kind)}>
+                              <ReactionArt kind={kind} size={26} />
+                            </button>
+                          ))}
+                        </div>
+                        {/* Outside the row, so it stays put while the row scrolls. */}
+                        <button
+                          className={allReactions ? "more open" : "more"}
+                          title={allReactions ? "Свернуть" : "Все реакции"}
+                          onClick={() => setAllReactions(!allReactions)}
+                        >
+                          <IconChevron />
                         </button>
                       </div>
                       {allReactions && (
@@ -949,6 +959,13 @@ function PhotoView(props: { message: Message }) {
   const { message } = props;
   const photo = message.photo!;
   const [source, setSource] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [open]);
   useEffect(() => {
     if (photo.state !== "ready") return;
     let alive = true;
@@ -964,10 +981,21 @@ function PhotoView(props: { message: Message }) {
   return (
     <div className="photo" style={{ width, height }}>
       {source ? (
-        <img src={source} alt="Фото" onClick={() => window.open(source, "_blank")} />
+        <img src={source} alt="Фото" onClick={() => setOpen(true)} />
       ) : (
         <span>{photo.state === "missing" ? "Фото не дошло" : "Фото загружается"}</span>
       )}
+      {open &&
+        source &&
+        createPortal(
+          <div className="photo-viewer" onClick={() => setOpen(false)}>
+            <img src={source} alt="Фото" onClick={(e) => e.stopPropagation()} />
+            <button className="photo-close" title="Закрыть" onClick={() => setOpen(false)}>
+              <IconClose />
+            </button>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
