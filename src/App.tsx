@@ -976,10 +976,11 @@ function PhotoView(props: { message: Message }) {
       alive = false;
     };
   }, [message.id, photo.state]);
-  const width = 260;
-  const height = Math.round(Math.min(Math.max((width * photo.height) / Math.max(photo.width, 1), width * 0.5), width * 1.35));
+  // The whole photo at its own proportions, within 320 x 360.
+  const ratio = Math.max(photo.width, 1) / Math.max(photo.height, 1);
+  const width = Math.round(Math.max(Math.min(320, 360 * ratio), 160));
   return (
-    <div className="photo" style={{ width, height }}>
+    <div className="photo" style={{ width, aspectRatio: `${Math.max(ratio, width / 360)}` }}>
       {source ? (
         <img src={source} alt="Фото" onClick={() => setOpen(true)} />
       ) : (

@@ -43,8 +43,9 @@ export const IconClose = () => (
 export const IconArrow = () => (
   <svg {...svg} strokeWidth={2.4}><path d="M12 19V5M6 11l6-6 6 6" /></svg>
 );
+// As wide as the ticks drawn, so the time beside them keeps to the edge.
 export const IconTicks = (props: { read?: boolean }) => (
-  <svg {...svg} width={16} height={12} viewBox="0 0 24 16" strokeWidth={2.2}>
+  <svg {...svg} width={props.read ? 16 : 12} height={12} viewBox={props.read ? "0 0 21 16" : "0 0 16 16"} strokeWidth={2.2}>
     <path d="M2 8l4 4 8-9" />
     {props.read && <path d="M10 11l1 1 8-9" />}
   </svg>
