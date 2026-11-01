@@ -5,6 +5,7 @@
 //             non-extractable WebCrypto key that is stored next to it
 //   records   the profile's encrypted records (protocol section 09), the same
 //             layout native clients keep in SQLite
+//   photos    the profile's photos, sealed by Shum-Core like the records
 //   meta      which profile is open
 // Every save is one IndexedDB transaction; Shum-Core takes the new state only
 // after it completed.
@@ -41,12 +42,17 @@ export function ready() {
 
 function db(): Promise<IDBDatabase> {
   opened ??= new Promise((resolve, reject) => {
-    const request = indexedDB.open(database, 1);
-    request.onupgradeneeded = () => {
+    const request = indexedDB.open(database, 2);
+    request.onupgradeneeded = (event) => {
       const d = request.result;
-      d.createObjectStore("profiles", { keyPath: "id" });
-      d.createObjectStore("records", { keyPath: ["profile", "bucket", "id"] }).createIndex("profile", "profile");
-      d.createObjectStore("meta", { keyPath: "key" });
+      if (event.oldVersion < 1) {
+        d.createObjectStore("profiles", { keyPath: "id" });
+        d.createObjectStore("records", { keyPath: ["profile", "bucket", "id"] }).createIndex("profile", "profile");
+        d.createObjectStore("meta", { keyPath: "key" });
+      }
+      if (event.oldVersion < 2) {
+        d.createObjectStore("photos", { keyPath: ["profile", "id"] }).createIndex("profile", "profile");
+      }
     };
     request.onsuccess = () => {
       const d = request.result;
@@ -201,6 +207,21 @@ export async function persist(id: string, plan: Plan) {
   await finished(tx);
 }
 
+/** Stores a photo Shum-Core sealed (base64), or removes it with `null`. */
+export async function persistPhoto(profile: string, id: string, payload: string | null) {
+  const d = await db();
+  const tx = d.transaction("photos", "readwrite");
+  if (payload === null) tx.objectStore("photos").delete([profile, id]);
+  else tx.objectStore("photos").put({ profile, id, payload: Uint8Array.from(atob(payload), (c) => c.charCodeAt(0)) });
+  await finished(tx);
+}
+
+/** The profile's sealed photos, for Shum-Core when its session starts. */
+export async function loadPhotos(profile: string): Promise<{ id: string; payload: Uint8Array }[]> {
+  const d = await db();
+  return result(d.transaction("photos").objectStore("photos").index("profile").getAll(profile));
+}
+
 /** Keeps the local list's name in step with the profile's card. */
 export async function renameProfile(id: string, name: string) {
   const d = await db();
@@ -216,17 +237,19 @@ export async function renameProfile(id: string, name: string) {
   await finished(tx);
 }
 
-/** Removes a profile and all its records from this browser. */
+/** Removes a profile with all its records and photos from this browser. */
 export async function deleteProfile(id: string) {
   const d = await db();
-  const tx = d.transaction(["profiles", "records", "meta"], "readwrite");
+  const tx = d.transaction(["profiles", "records", "photos", "meta"], "readwrite");
   tx.objectStore("profiles").delete(id);
   // Deletes follow their reads inside the read events, so the transaction
   // stays active in every browser.
-  const keys = tx.objectStore("records").index("profile").getAllKeys(id);
-  keys.onsuccess = () => {
-    for (const key of keys.result) tx.objectStore("records").delete(key);
-  };
+  for (const name of ["records", "photos"]) {
+    const keys = tx.objectStore(name).index("profile").getAllKeys(id);
+    keys.onsuccess = () => {
+      for (const key of keys.result) tx.objectStore(name).delete(key);
+    };
+  }
   const meta = tx.objectStore("meta").get("selected");
   meta.onsuccess = () => {
     if ((meta.result as { value?: string } | undefined)?.value === id) tx.objectStore("meta").delete("selected");

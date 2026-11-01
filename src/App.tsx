@@ -334,15 +334,18 @@ export default function App() {
               </li>
             )}
           </ul>
-          <footer className={`relay${snapshot.relays.length ? "" : " off"}`}>
+          <footer
+            className={`relay${snapshot.relays.length ? "" : " off"}`}
+            title={(snapshot.relayList ?? snapshot.relays)
+              .map((url) => `${snapshot.relays.includes(url) ? "●" : "○"} ${url.replace("wss://", "")}`)
+              .join("\n")}
+          >
             <IconGlobe />
             {problem
               ? "Нет связи с профилем"
               : snapshot.relays.length === 0
-                ? "Нет связи с релеями"
-                : snapshot.relays.length === 1
-                  ? "Релей подключён"
-                  : `Релеев подключено: ${snapshot.relays.length}`}
+                ? "Нет связи с реле"
+                : `Реле: ${snapshot.relays.length} из ${Math.max(snapshot.relayList?.length ?? 0, snapshot.relays.length)}`}
           </footer>
         </aside>
       )}

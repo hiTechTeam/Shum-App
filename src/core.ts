@@ -51,6 +51,8 @@ export type Snapshot = {
   reactions: Reaction[];
   blocked?: { id: string; card: Card }[];
   relays: string[];
+  /** Every relay the session uses, connected or not (cores before 0.1.14 leave it out). */
+  relayList?: string[];
   bluetooth?: { enabled?: boolean | null; scan?: string; advertise?: string; error?: string };
   owner?: string;
   version?: string;

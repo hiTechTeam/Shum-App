@@ -5,11 +5,12 @@
 // it sends, and a request is answered once its state is stored.
 import type { Request, Snapshot } from "../core";
 import { WebSession } from "./core/shum_web.js";
-import { persist, renameProfile, type Plan, type WebProfile } from "./store";
+import { persist, persistPhoto, renameProfile, type Plan, type WebProfile } from "./store";
 
 type Answer = { ok?: unknown; error?: unknown };
 type Effect =
   | ({ type: "store" } & Plan)
+  | { type: "photo"; id: string; payload: string | null }
   | { type: "renamed"; name: string }
   | { type: "connect"; relay: number; attempt: number }
   | { type: "send"; relay: number; text: string }
@@ -44,8 +45,10 @@ export class BrowserSession {
     profile: WebProfile,
     name: string,
     relays: string[],
+    photos: { id: string; payload: Uint8Array }[],
   ) {
     this.core = new WebSession(profile, id, name, relays, true, Date.now());
+    for (const photo of photos) this.core.addPhoto(photo.id, photo.payload);
     this.timer = window.setInterval(this.tick, 1000);
     window.addEventListener("online", this.wake);
     document.addEventListener("visibilitychange", this.wake);
@@ -108,6 +111,14 @@ export class BrowserSession {
             await persist(this.id, effect);
           } catch {
             // Memory is ahead of storage now; stop before anything is sent.
+            this.fail();
+            return;
+          }
+          break;
+        case "photo":
+          try {
+            await persistPhoto(this.id, effect.id, effect.payload);
+          } catch {
             this.fail();
             return;
           }

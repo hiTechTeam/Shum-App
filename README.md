@@ -46,7 +46,7 @@ Installed apps update themselves to the next release.
   <img src="docs/screenshots/web.jpg" width="100%" alt="Shum Web in the browser">
 </p>
 
-[app.getshum.tech](https://app.getshum.tech) is the same interface in the browser, with nothing to install. It talks through Nostr relays; Bluetooth needs the app or the phone.
+[app.getshum.tech](https://app.getshum.tech) is the same interface in the browser, with nothing to install. It talks through Shum's relay `relay.getshum.tech` and independent Nostr relays, sends and receives photos, and keeps them encrypted in the browser. Bluetooth needs the app or the phone.
 
 ## Works with the CLI
 

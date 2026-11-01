@@ -15,7 +15,7 @@ import {
   validateName,
 } from "./core/shum_web.js";
 import { BrowserSession } from "./session";
-import { createProfile, deleteProfile, listProfiles, openProfile, ready, restoreProfile, selectProfile, selectedProfile } from "./store";
+import { createProfile, deleteProfile, listProfiles, loadPhotos, openProfile, ready, restoreProfile, selectProfile, selectedProfile } from "./store";
 
 let open: Promise<BrowserSession | null> | null = null;
 /** Keys of the profile being created: made first, before the name and avatar. */
@@ -74,7 +74,7 @@ function current(): Promise<BrowserSession | null> {
     if (!unlock) throw failure("Shum уже открыт в другой вкладке. Продолжайте там или закройте ту вкладку: эта откроется сама.");
     try {
       const profile = await openProfile(id);
-      const session = new BrowserSession(id, profile, entry.name, defaultRelays());
+      const session = new BrowserSession(id, profile, entry.name, defaultRelays(), await loadPhotos(id));
       release = unlock;
       return session;
     } catch (error) {

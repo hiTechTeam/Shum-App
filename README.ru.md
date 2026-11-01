@@ -46,7 +46,7 @@
   <img src="docs/screenshots/web.jpg" width="100%" alt="Shum Web в браузере">
 </p>
 
-[app.getshum.tech](https://app.getshum.tech): тот же интерфейс в браузере, ничего не нужно устанавливать. Сообщения идут через релеи Nostr; для Bluetooth нужно приложение или телефон.
+[app.getshum.tech](https://app.getshum.tech): тот же интерфейс в браузере, ничего не нужно устанавливать. Сообщения идут через реле Shum `relay.getshum.tech` и независимые реле Nostr, фото отправляются и приходят и хранятся в браузере зашифрованными. Для Bluetooth нужно приложение или телефон.
 
 ## Вместе с CLI
 
