@@ -6,7 +6,7 @@
 
 <p align="center">
   Chats, contacts and people nearby over Bluetooth, on macOS, Windows and in the browser.<br>
-  The same profile as on iPhone and in the terminal.
+  Shares profiles with the terminal client; a profile from iPhone moves here through a backup.
 </p>
 
 <p align="center">
